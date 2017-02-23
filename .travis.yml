@@ -15,4 +15,5 @@ script:
   - test -z "$(go test -v | tee /dev/stderr)"
   - test -z "$(golint | tee /dev/stderr)"
   - test -z "$(gofmt | tee /dev/stderr)"
+  - test -z "$(go vet | tee /dev/stderr)"
   # - test -z "$(gas | tee /dev/stderr)"
