@@ -7,9 +7,11 @@ go: 1.8
 install:
   - go get -u github.com/golang/lint/golint
   - go get -u github.com/Masterminds/glide
+  - go get -u github.com/GoASTScanner/gas
   - glide install
 
 script:
   - test -z "$(go build | tee /dev/stderr)"
-  - go test -v
-  - golint
+  - go test -v | tee /dev/stderr
+  - golint | tee /dev/stderr
+  - gofmt | tee /dev/stderr
