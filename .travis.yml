@@ -1,0 +1,15 @@
+sudo: false
+
+language: go
+
+go: 1.8
+
+install:
+  - go get -u github.com/golang/lint/golint
+  - go get -u github.com/Masterminds/glide
+  - glide install
+
+script:
+  - test -z "$(go build | tee /dev/stderr)"
+  - go test -v
+  - golint
