@@ -12,7 +12,7 @@ install:
 
 script:
   - test -z "$(go build | tee /dev/stderr)"
-  - test -z "$(go test -v | tee /dev/stderr)"
+  - go test -v | tee /dev/stderr
   - test -z "$(golint | tee /dev/stderr)"
   - test -z "$(gofmt | tee /dev/stderr)"
   - test -z "$(go vet | tee /dev/stderr)"
