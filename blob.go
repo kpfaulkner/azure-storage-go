@@ -878,6 +878,39 @@ func (b BlobStorageClient) AppendBlock(container, name string, chunk []byte, ext
 	return checkRespCode(resp.statusCode, []int{http.StatusCreated})
 }
 
+// IncrementalCopyBlob copies a snapshot of a source blob and copies to the destination container and blobName
+// sourceBlob parameter must be a valid snapshot URL of the original blob.
+//
+// See https://docs.microsoft.com/en-us/rest/api/storageservices/fileservices/incremental-copy-blob
+func (b BlobStorageClient) IncrementalCopyBlob(container, name, sourceBlobURL string, timeout uint) (string, error) {
+	params := url.Values{"comp": {"incrementalcopy"}}
+	if timeout > 0 {
+		params.Add("timeout", strconv.Itoa(int(timeout)))
+	}
+
+	uri := b.client.getEndpoint(blobServiceName, pathForBlob(container, name), params)
+
+	headers := b.client.getStandardHeaders()
+	headers["x-ms-copy-source"] = sourceBlobURL
+	fmt.Printf("sourceblob url %s", sourceBlobURL)
+	fmt.Printf("incrementcopy url is %s", uri)
+	resp, err := b.client.exec(http.MethodPut, uri, headers, nil, b.auth)
+	if err != nil {
+		return "", err
+	}
+	defer readAndCloseBody(resp.body)
+
+	if err := checkRespCode(resp.statusCode, []int{http.StatusAccepted}); err != nil {
+		return "", err
+	}
+
+	copyID := resp.headers.Get("x-ms-copy-id")
+	if copyID == "" {
+		return "", errors.New("Got empty copy id header")
+	}
+	return copyID, nil
+}
+
 // CopyBlob starts a blob copy operation and waits for the operation to
 // complete. sourceBlob parameter must be a canonical URL to the blob (can be
 // obtained using GetBlobURL method.) There is no SLA on blob copy and therefore
