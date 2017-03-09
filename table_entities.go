@@ -123,7 +123,32 @@ func (c *TableServiceClient) QueryTableEntities(tableName AzureTable, previousCo
 // InsertEntity inserts an entity in the specified table.
 // The function fails if there is an entity with the same
 // PartitionKey and RowKey in the table.
-func (c *TableServiceClient) InsertEntity(table AzureTable, entity TableEntity) error {
+//
+// Modified to handle variadic arguments.
+func (c *TableServiceClient) InsertEntity(table AzureTable, entity ...TableEntity) error {
+
+	if len(entity) == 1 {
+		return c.insertSingleEntity(table, entity[0])
+	}
+
+	return c.insertMultipleEntities(table, entity)
+}
+
+func (c *TableServiceClient) insertMultipleEntities(table AzureTable, entities []TableEntity) error {
+	sc := 200
+	var err error
+
+	for _, singleEntity := range entities {
+		sc, err = c.execTable(table, singleEntity, false, http.MethodPost)
+		if err != nil {
+			return err
+		}
+	}
+
+	return checkRespCode(sc, []int{http.StatusCreated})
+}
+
+func (c *TableServiceClient) insertSingleEntity(table AzureTable, entity TableEntity) error {
 	sc, err := c.execTable(table, entity, false, http.MethodPost)
 	if err != nil {
 		return err
