@@ -65,6 +65,18 @@ type getTableEntriesResponse struct {
 	Elements []map[string]interface{} `json:"value"`
 }
 
+// used for when performing batch operations
+type batchEntity struct {
+	changeSetContentTypeHeader             string
+	changeSetContentTransferEncodingHeader string
+	url                                    string
+	acceptHeader                           string
+	contentTypeHeader                      string
+	preferHeader                           string
+	dataServiceVersionHeader               string
+	body                                   string
+}
+
 // QueryTableEntities queries the specified table and returns the unmarshaled
 // entities of type retType.
 // top parameter limits the returned entries up to top. Maximum top
@@ -135,7 +147,7 @@ func (c *TableServiceClient) InsertEntity(table AzureTable, entity ...TableEntit
 }
 
 func (c *TableServiceClient) insertMultipleEntities(table AzureTable, entities []TableEntity) error {
-	sc := 200
+	sc := 200 // TODO(kpfaulkner) change to real http status code.
 	var err error
 
 	for _, singleEntity := range entities {
@@ -157,6 +169,38 @@ func (c *TableServiceClient) insertSingleEntity(table AzureTable, entity TableEn
 	return checkRespCode(sc, []int{http.StatusCreated})
 }
 
+/*
+func (c *TableServiceClient) execMultipleTable(table AzureTable, entitySlice []TableEntity, specifyKeysInURL bool, method string) (int, error) {
+
+	headers := c.getStandardHeaders()
+
+	var buf bytes.Buffer
+	uri := c.client.getEndpoint(tableServiceName, pathForTable(table), url.Values{})
+	uri = uri + "$batch" // TODO(kpfaulkner) figure out nicer way to do this.
+
+	for entity := range entitySlice {
+		uri += fmt.Sprintf("(PartitionKey='%s',RowKey='%s')", url.QueryEscape(entity.PartitionKey()), url.QueryEscape(entity.RowKey()))
+
+		if err := injectPartitionAndRowKeys(entity, &buf); err != nil {
+			return 0, err
+		}
+
+		headers["Content-Length"] = fmt.Sprintf("%d", buf.Len())
+
+		resp, err := c.client.execInternalJSON(method, uri, headers, &buf, c.auth)
+
+		if err != nil {
+			return 0, err
+		}
+
+	}
+	defer resp.body.Close()
+
+	return resp.statusCode, nil
+
+}
+*/
+
 func (c *TableServiceClient) execTable(table AzureTable, entity TableEntity, specifyKeysInURL bool, method string) (int, error) {
 	uri := c.client.getEndpoint(tableServiceName, pathForTable(table), url.Values{})
 	if specifyKeysInURL {
@@ -173,6 +217,7 @@ func (c *TableServiceClient) execTable(table AzureTable, entity TableEntity, spe
 
 	headers["Content-Length"] = fmt.Sprintf("%d", buf.Len())
 
+	fmt.Printf("buf: %s", buf.String())
 	resp, err := c.client.execInternalJSON(method, uri, headers, &buf, c.auth)
 
 	if err != nil {
