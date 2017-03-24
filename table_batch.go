@@ -2,10 +2,8 @@ package storage
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -13,6 +11,15 @@ import (
 
 	"github.com/satori/uuid"
 )
+
+type TableBatchError struct {
+	Code    int
+	Message string
+}
+
+func (e *TableBatchError) Error() string {
+	return fmt.Sprintf("Error code %d : Msg %s", e.Code, e.Message)
+}
 
 // TableBatch stores all the enties that will be operated on during a batch process.
 // Entities can be inserted, replaced or deleted.
@@ -87,28 +94,31 @@ func (c *TableServiceClient) ExecuteBatch(table AzureTable, batch *TableBatch) e
 
 	fmt.Printf("resp %+v", resp)
 
-	//  NEED TO CHECK RESPONSE?
-	data, err := ioutil.ReadAll(resp.body)
-	if err != nil {
-		fmt.Printf("body error %s", err)
-		fmt.Printf("data is %s", data)
-		return err
-	}
+	/*
+		//  NEED TO CHECK RESPONSE?
+		data, err := ioutil.ReadAll(resp.body)
+		if err != nil {
+			fmt.Printf("body error %s", err)
+			fmt.Printf("data is %s", data)
+			return err
+		}
 
-	var res odataErrorMessage
-	if err := json.Unmarshal(data, &res); err != nil {
-		fmt.Printf("unmarshallerr %s", err)
-		return err
-	}
+		var res odataErrorMessage
+		if err := json.Unmarshal(data, &res); err != nil {
+			fmt.Printf("unmarshallerr %s", err)
+			return err
+		}
 
-	fmt.Printf("YYYYXXXXXX\n\n\nres %s\n\n\n", res)
+		fmt.Printf("YYYYXXXXXX\n\n\nres %s\n\n\n", res)
 
-	fmt.Printf("XXXXXXXXXXXX\n\n\nodata %s\n\n\n", resp.odata)
+		fmt.Printf("XXXXXXXXXXXX\n\n\nodata %s\n\n\n", resp.odata)
 
-	fmt.Printf("other data %s", data)
-	fmt.Printf("status code %+v", resp.statusCode)
+		fmt.Printf("other data %s", data)
+		fmt.Printf("status code %+v", resp.statusCode)
 
+	*/
 	if err = checkRespCode(resp.statusCode, []int{http.StatusAccepted}); err != nil {
+		fmt.Printf("\n\nerr7 %s\n\n", err)
 		return err
 	}
 	return nil
