@@ -98,7 +98,7 @@ func (c *TableServiceClient) QueryTableEntities(tableName AzureTable, previousCo
 
 	headers["Content-Length"] = "0"
 
-	resp, err := c.client.execInternalJSON(http.MethodGet, uri, headers, nil, c.auth)
+	resp, err := c.client.execInternalJSON(http.MethodGet, uri, headers, nil, c.auth, false)
 
 	if err != nil {
 		return nil, nil, err
@@ -136,8 +136,11 @@ func (c *TableServiceClient) execTable(table AzureTable, entity TableEntity, spe
 	uri := c.client.getEndpoint(tableServiceName, pathForTable(table), url.Values{})
 	if specifyKeysInURL {
 		uri += fmt.Sprintf("(PartitionKey='%s',RowKey='%s')", url.QueryEscape(entity.PartitionKey()), url.QueryEscape(entity.RowKey()))
+	} else {
+		uri += "()"
 	}
 
+	fmt.Printf("entity %s", entity)
 	headers := c.getStandardHeaders()
 
 	var buf bytes.Buffer
@@ -148,14 +151,13 @@ func (c *TableServiceClient) execTable(table AzureTable, entity TableEntity, spe
 
 	headers["Content-Length"] = fmt.Sprintf("%d", buf.Len())
 
-	resp, err := c.client.execInternalJSON(method, uri, headers, &buf, c.auth)
+	resp, err := c.client.execInternalJSON(method, uri, headers, &buf, c.auth, false)
 
 	if err != nil {
 		return 0, err
 	}
 
 	defer resp.body.Close()
-
 	return resp.statusCode, nil
 }
 
@@ -207,7 +209,7 @@ func (c *TableServiceClient) DeleteEntity(table AzureTable, entity TableEntity, 
 	headers["Content-Length"] = "0"
 	headers["If-Match"] = ifMatch
 
-	resp, err := c.client.execInternalJSON(http.MethodDelete, uri, headers, nil, c.auth)
+	resp, err := c.client.execInternalJSON(http.MethodDelete, uri, headers, nil, c.auth, false)
 
 	if err != nil {
 		return err

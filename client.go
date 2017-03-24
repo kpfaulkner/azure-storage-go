@@ -2,6 +2,7 @@
 package storage
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
@@ -10,7 +11,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"runtime"
 	"strconv"
@@ -349,6 +354,16 @@ func (c Client) exec(verb, url string, headers map[string]string, body io.Reader
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
+
+	/*
+		dump, err := httputil.DumpRequest(req, true)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Printf("DUMP %q\n\n\n", dump)
+	*/
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -385,6 +400,116 @@ func (c Client) exec(verb, url string, headers map[string]string, body io.Reader
 		statusCode: resp.StatusCode,
 		headers:    resp.Header,
 		body:       resp.Body}, nil
+}
+
+func (c Client) execInternalJSONBatch(verb, url string, headers map[string]string, body io.Reader, auth authentication, returnOData bool) (*odataResponse, error) {
+	headers, err := c.addAuthorizationHeader(verb, url, headers, auth)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(verb, url, body)
+	for k, v := range headers {
+		req.Header.Add(k, v)
+	}
+
+	httpClient := c.HTTPClient
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
+	dump, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("DUMP %q\n\n\n", dump)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respToRet := &odataResponse{}
+	respToRet.body = resp.Body
+	respToRet.statusCode = resp.StatusCode
+	respToRet.headers = resp.Header
+
+	statusCode := resp.StatusCode
+	if returnOData || (statusCode >= 400 && statusCode <= 505) {
+		var respBody []byte
+		respBody, err = readAndCloseBody(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		bodyLen := len(respBody)
+		//fmt.Printf("bodylen %d", bodyLen)
+		if bodyLen == 0 {
+			// no error in response body, might happen in HEAD requests
+			err = serviceErrFromStatusCode(resp.StatusCode, resp.Status, resp.Header.Get("x-ms-request-id"))
+			return respToRet, err
+		}
+
+		ct := resp.Header["Content-Type"]
+
+		_, params, err := mime.ParseMediaType(resp.Header["Content-Type"][0])
+		if err != nil {
+			return nil, err
+		}
+
+		s := string(respBody)
+		sr := strings.NewReader(s)
+
+		boundary := params["boundary"]
+		mr := multipart.NewReader(sr, boundary)
+
+		p, err := mr.NextPart()
+		if err != nil {
+			return nil, err
+		}
+
+		slurp, err := ioutil.ReadAll(p)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		_, params, err = mime.ParseMediaType(p.Header.Get("Content-Type"))
+		if err != nil {
+			return nil, err
+		}
+
+		boundary = params["boundary"]
+		buf2 := bytes.NewReader(slurp)
+
+		mr2 := multipart.NewReader(buf2, boundary)
+
+		p, err = mr2.NextPart()
+		if err != nil {
+			return nil, err
+		}
+
+		slurp2, err := ioutil.ReadAll(p)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		br := bytes.NewReader(slurp2)
+		brr := bufio.NewReader(br)
+		resp, err := http.ReadResponse(brr, req)
+		if err != nil {
+			return nil, err
+		}
+
+		b, err := readAndCloseBody(resp.Body)
+		err = json.Unmarshal(b, &respToRet.odata)
+		if err != nil {
+			return nil, err
+		}
+		return respToRet, err
+	}
+
+	return respToRet, nil
 }
 
 func (c Client) execInternalJSON(verb, url string, headers map[string]string, body io.Reader, auth authentication) (*odataResponse, error) {
@@ -426,11 +551,11 @@ func (c Client) execInternalJSON(verb, url string, headers map[string]string, bo
 			err = serviceErrFromStatusCode(resp.StatusCode, resp.Status, resp.Header.Get("x-ms-request-id"))
 			return respToRet, err
 		}
+
 		// try unmarshal as odata.error json
 		err = json.Unmarshal(respBody, &respToRet.odata)
 		return respToRet, err
 	}
-
 	return respToRet, nil
 }
 
