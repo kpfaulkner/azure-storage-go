@@ -440,6 +440,7 @@ func (c Client) execInternalJSON(verb, url string, headers map[string]string, bo
 	// return the OData in the case of executing batch commands.
 	// In this case we need to read the outer batch boundary and contents.
 	// Then we read the changeset information within the batch
+	// We *COULD* put this in a separate execInternalJSON like method if need be.
 	if returnOData {
 		var respBody []byte
 		respBody, err = readAndCloseBody(resp.Body)
@@ -526,53 +527,6 @@ func genBatchReader(batchBoundary string, respBody []byte) (*bytes.Reader, strin
 	batchPartBuf := bytes.NewReader(batchPartContents)
 
 	return batchPartBuf, changesetBoundary, nil
-}
-
-func (c Client) execInternalJSONOrig(verb, url string, headers map[string]string, body io.Reader, auth authentication) (*odataResponse, error) {
-	headers, err := c.addAuthorizationHeader(verb, url, headers, auth)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(verb, url, body)
-	for k, v := range headers {
-		req.Header.Add(k, v)
-	}
-
-	httpClient := c.HTTPClient
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	respToRet := &odataResponse{}
-	respToRet.body = resp.Body
-	respToRet.statusCode = resp.StatusCode
-	respToRet.headers = resp.Header
-
-	statusCode := resp.StatusCode
-	if statusCode >= 400 && statusCode <= 505 {
-		var respBody []byte
-		respBody, err = readAndCloseBody(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(respBody) == 0 {
-			// no error in response body, might happen in HEAD requests
-			err = serviceErrFromStatusCode(resp.StatusCode, resp.Status, resp.Header.Get("x-ms-request-id"))
-			return respToRet, err
-		}
-
-		// try unmarshal as odata.error json
-		err = json.Unmarshal(respBody, &respToRet.odata)
-		return respToRet, err
-	}
-	return respToRet, nil
 }
 
 func readAndCloseBody(body io.ReadCloser) ([]byte, error) {
