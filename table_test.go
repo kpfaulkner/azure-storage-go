@@ -439,3 +439,36 @@ func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C)
 	c.Assert(err, chk.IsNil)
 	c.Assert(len(entries), chk.Equals, 0)
 }
+
+func (s *StorageTableSuite) Test_BatchInsertThenMergeDifferentBatches(c *chk.C) {
+	cli := getTableClient(c)
+
+	tn := AzureTable(randTable())
+
+	err := cli.CreateTable(tn)
+	c.Assert(err, chk.IsNil)
+	defer cli.DeleteTable(tn)
+
+	ce := &CustomEntity{Name: "Luke", Surname: "Skywalker", Number: 1543, PKey: "pkey", RKey: "5"}
+	ce2 := &CustomEntity{Name: "Luke", Surname: "Skywalker", Number: 154311, PKey: "pkey", RKey: "6"}
+	batch := TableBatch{}
+	batch.InsertEntity(ce)
+	batch.InsertEntity(ce2)
+	err = cli.ExecuteBatch(tn, &batch)
+	c.Assert(err, chk.IsNil)
+
+	entries, _, err := cli.QueryTableEntities(tn, nil, reflect.TypeOf(ce), 10, "")
+	c.Assert(err, chk.IsNil)
+	c.Assert(len(entries), chk.Equals, 2)
+
+	ce3 := &CustomEntityExtended{&CustomEntity{Name: "Luke", Surname: "Skywalker", PKey: "pkey", RKey: "5"}, "foo"}
+
+	batch = TableBatch{}
+	batch.MergeEntity(ce3)
+	err = cli.ExecuteBatch(tn, &batch)
+	c.Assert(err, chk.IsNil)
+
+	entries, _, err = cli.QueryTableEntities(tn, nil, reflect.TypeOf(ce), 10, "")
+	c.Assert(err, chk.IsNil)
+	c.Assert(len(entries), chk.Equals, 2)
+}
