@@ -13,12 +13,12 @@ import (
 )
 
 type TableBatchError struct {
-	Code    int
+	Code    string
 	Message string
 }
 
-func (e *TableBatchError) Error() string {
-	return fmt.Sprintf("Error code %d : Msg %s", e.Code, e.Message)
+func (e TableBatchError) Error() string {
+	return fmt.Sprintf("Error code %s : Msg %s", e.Code, e.Message)
 }
 
 // TableBatch stores all the enties that will be operated on during a batch process.
@@ -87,40 +87,17 @@ func (c *TableServiceClient) ExecuteBatch(table AzureTable, batch *TableBatch) e
 
 	resp, err := c.client.execInternalJSON(http.MethodPost, uri, headers, bytes.NewReader(body.Bytes()), c.auth, true)
 	if err != nil {
-		fmt.Printf("exec error %s", err)
 		return err
 	}
 	defer resp.body.Close()
 
-	fmt.Printf("resp %+v", resp)
-
-	/*
-		//  NEED TO CHECK RESPONSE?
-		data, err := ioutil.ReadAll(resp.body)
-		if err != nil {
-			fmt.Printf("body error %s", err)
-			fmt.Printf("data is %s", data)
-			return err
-		}
-
-		var res odataErrorMessage
-		if err := json.Unmarshal(data, &res); err != nil {
-			fmt.Printf("unmarshallerr %s", err)
-			return err
-		}
-
-		fmt.Printf("YYYYXXXXXX\n\n\nres %s\n\n\n", res)
-
-		fmt.Printf("XXXXXXXXXXXX\n\n\nodata %s\n\n\n", resp.odata)
-
-		fmt.Printf("other data %s", data)
-		fmt.Printf("status code %+v", resp.statusCode)
-
-	*/
 	if err = checkRespCode(resp.statusCode, []int{http.StatusAccepted}); err != nil {
-		fmt.Printf("\n\nerr7 %s\n\n", err)
-		return err
+		detailedErr := TableBatchError{}
+		detailedErr.Code = resp.odata.Err.Code
+		detailedErr.Message = resp.odata.Err.Message.Value
+		return detailedErr
 	}
+
 	return nil
 }
 

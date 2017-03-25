@@ -418,16 +418,15 @@ func (c Client) execInternalJSON(verb, url string, headers map[string]string, bo
 	respToRet.headers = resp.Header
 
 	statusCode := resp.StatusCode
-	var respBody []byte
-	respBody, err = readAndCloseBody(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 
 	if statusCode >= 400 && statusCode <= 505 {
+		var respBody []byte
+		respBody, err = readAndCloseBody(resp.Body)
+		if err != nil {
+			return nil, err
+		}
 
-		bodyLen := len(respBody)
-		if bodyLen == 0 {
+		if len(respBody) == 0 {
 			// no error in response body, might happen in HEAD requests
 			err = serviceErrFromStatusCode(resp.StatusCode, resp.Status, resp.Header.Get("x-ms-request-id"))
 			return respToRet, err
@@ -442,6 +441,11 @@ func (c Client) execInternalJSON(verb, url string, headers map[string]string, bo
 	// In this case we need to read the outer batch boundary and contents.
 	// Then we read the changeset information within the batch
 	if returnOData {
+		var respBody []byte
+		respBody, err = readAndCloseBody(resp.Body)
+		if err != nil {
+			return nil, err
+		}
 
 		// outer multipart body
 		_, batchHeader, err := mime.ParseMediaType(resp.Header["Content-Type"][0])
@@ -456,6 +460,7 @@ func (c Client) execInternalJSON(verb, url string, headers map[string]string, bo
 			return nil, err
 		}
 
+		// changeset details.
 		err = genChangesetReader(req, respToRet, batchPartBuf, changesetBoundary)
 		if err != nil {
 			return nil, err

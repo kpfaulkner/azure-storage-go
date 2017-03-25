@@ -140,7 +140,6 @@ func (c *TableServiceClient) execTable(table AzureTable, entity TableEntity, spe
 		uri += "()"
 	}
 
-	fmt.Printf("entity %s", entity)
 	headers := c.getStandardHeaders()
 
 	var buf bytes.Buffer

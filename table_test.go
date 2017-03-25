@@ -69,9 +69,8 @@ func (s *StorageTableSuite) Test_InsertEntities(c *chk.C) {
 
 	err := cli.CreateTable(tn)
 	c.Assert(err, chk.IsNil)
-	//defer cli.DeleteTable(tn)
+	defer cli.DeleteTable(tn)
 
-	fmt.Printf("*********************************\n\ninsert table %s\n\n\n", tn)
 	ce := &CustomEntity{Name: "Luke", Surname: "Skywalker", Number: 1543, PKey: "pkey"}
 
 	for i := 0; i < 12; i++ {
@@ -351,7 +350,6 @@ func (s *StorageTableSuite) Test_BatchInsertMultipleEntities(c *chk.C) {
 	c.Assert(err, chk.IsNil)
 	defer cli.DeleteTable(tn)
 
-	fmt.Printf("table %s", tn)
 	ce := &CustomEntity{Name: "Luke", Surname: "Skywalker", Number: 1543, PKey: "pkey", RKey: "5"}
 	ce2 := &CustomEntity{Name: "Luke", Surname: "Skywalker", Number: 1543, PKey: "pkey", RKey: "6"}
 	batch := TableBatch{}
@@ -365,4 +363,79 @@ func (s *StorageTableSuite) Test_BatchInsertMultipleEntities(c *chk.C) {
 	c.Assert(err, chk.IsNil)
 	c.Assert(len(entries), chk.Equals, 2)
 
+}
+
+func (s *StorageTableSuite) Test_BatchInsertSameEntryMultipleTimes(c *chk.C) {
+	cli := getTableClient(c)
+
+	tn := AzureTable(randTable())
+
+	err := cli.CreateTable(tn)
+	c.Assert(err, chk.IsNil)
+	defer cli.DeleteTable(tn)
+
+	ce := &CustomEntity{Name: "Luke", Surname: "Skywalker", Number: 1543, PKey: "pkey", RKey: "5"}
+	batch := TableBatch{}
+	batch.InsertEntity(ce)
+	batch.InsertEntity(ce)
+
+	err = cli.ExecuteBatch(tn, &batch)
+	c.Assert(err, chk.NotNil)
+
+	v, ok := err.(TableBatchError)
+	if ok {
+		c.Assert(v.Code, chk.Equals, "InvalidDuplicateRow")
+	}
+}
+
+func (s *StorageTableSuite) Test_BatchInsertDeleteSameEntity(c *chk.C) {
+	cli := getTableClient(c)
+
+	tn := AzureTable(randTable())
+
+	err := cli.CreateTable(tn)
+	c.Assert(err, chk.IsNil)
+	defer cli.DeleteTable(tn)
+
+	ce := &CustomEntity{Name: "Luke", Surname: "Skywalker", Number: 1543, PKey: "pkey", RKey: "5"}
+	batch := TableBatch{}
+	batch.InsertEntity(ce)
+	batch.DeleteEntity(ce)
+
+	err = cli.ExecuteBatch(tn, &batch)
+	c.Assert(err, chk.NotNil)
+
+	v, ok := err.(TableBatchError)
+	if ok {
+		c.Assert(v.Code, chk.Equals, "InvalidDuplicateRow")
+	}
+}
+
+func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C) {
+	cli := getTableClient(c)
+
+	tn := AzureTable(randTable())
+
+	err := cli.CreateTable(tn)
+	c.Assert(err, chk.IsNil)
+	defer cli.DeleteTable(tn)
+
+	ce := &CustomEntity{Name: "Luke", Surname: "Skywalker", Number: 1543, PKey: "pkey", RKey: "5"}
+	batch := TableBatch{}
+	batch.InsertEntity(ce)
+	err = cli.ExecuteBatch(tn, &batch)
+	c.Assert(err, chk.IsNil)
+
+	entries, _, err := cli.QueryTableEntities(tn, nil, reflect.TypeOf(ce), 10, "")
+	c.Assert(err, chk.IsNil)
+	c.Assert(len(entries), chk.Equals, 1)
+
+	batch = TableBatch{}
+	batch.DeleteEntity(ce)
+	err = cli.ExecuteBatch(tn, &batch)
+	c.Assert(err, chk.IsNil)
+
+	entries, _, err = cli.QueryTableEntities(tn, nil, reflect.TypeOf(ce), 10, "")
+	c.Assert(err, chk.IsNil)
+	c.Assert(len(entries), chk.Equals, 0)
 }
