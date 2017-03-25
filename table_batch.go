@@ -12,6 +12,8 @@ import (
 	"github.com/satori/uuid"
 )
 
+// TableBatchError is used to return the errors from Batch requests. These are retrieved from
+// the inner response packets.
 type TableBatchError struct {
 	Code    string
 	Message string
