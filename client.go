@@ -461,7 +461,6 @@ func (c Client) execInternalJSON(verb, url string, headers map[string]string, bo
 			return nil, err
 		}
 	}
-
 	return respToRet, nil
 }
 
@@ -484,7 +483,7 @@ func genChangesetReader(req *http.Request, respToRet *odataResponse, batchPartBu
 		return err
 	}
 
-	if changesetResp.StatusCode != 204 {
+	if changesetResp.StatusCode != http.StatusNoContent {
 		changesetBody, err := readAndCloseBody(changesetResp.Body)
 		err = json.Unmarshal(changesetBody, &respToRet.odata)
 		if err != nil {
