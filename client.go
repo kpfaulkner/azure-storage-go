@@ -449,62 +449,79 @@ func (c Client) execInternalJSON(verb, url string, headers map[string]string, bo
 			return nil, err
 		}
 
+		// batch details.
 		batchBoundary := batchHeader["boundary"]
-		respBodyString := string(respBody)
-		respBodyReader := strings.NewReader(respBodyString)
-
-		// reading batchresponse
-		batchMultiReader := multipart.NewReader(respBodyReader, batchBoundary)
-		batchPart, err := batchMultiReader.NextPart()
+		batchPartBuf, changesetBoundary, err := genBatchReader(batchBoundary, respBody)
 		if err != nil {
 			return nil, err
 		}
 
-		batchPartContents, err := ioutil.ReadAll(batchPart)
+		err = genChangesetReader(req, respToRet, batchPartBuf, changesetBoundary)
 		if err != nil {
 			return nil, err
 		}
-
-		_, changesetHeader, err := mime.ParseMediaType(batchPart.Header.Get("Content-Type"))
-		if err != nil {
-			return nil, err
-		}
-
-		changesetBoundary := changesetHeader["boundary"]
-		batchPartBuf := bytes.NewReader(batchPartContents)
-
-		changesetMultiReader := multipart.NewReader(batchPartBuf, changesetBoundary)
-
-		changesetPart, err := changesetMultiReader.NextPart()
-		if err != nil {
-			return nil, err
-		}
-
-		changesetPartContents, err := ioutil.ReadAll(changesetPart)
-		if err != nil {
-			return nil, err
-		}
-
-		changesetPartReader := bytes.NewReader(changesetPartContents)
-		changesetPartBufioReader := bufio.NewReader(changesetPartReader)
-		changesetResp, err := http.ReadResponse(changesetPartBufioReader, req)
-		if err != nil {
-			return nil, err
-		}
-
-		if changesetResp.StatusCode != 204 {
-			changesetBody, err := readAndCloseBody(changesetResp.Body)
-			err = json.Unmarshal(changesetBody, &respToRet.odata)
-			if err != nil {
-				return nil, err
-			}
-			respToRet.statusCode = changesetResp.StatusCode
-		}
-
-		return respToRet, nil
 	}
 
 	return respToRet, nil
+}
+
+func genChangesetReader(req *http.Request, respToRet *odataResponse, batchPartBuf *bytes.Reader, changesetBoundary string) error {
+	changesetMultiReader := multipart.NewReader(batchPartBuf, changesetBoundary)
+	changesetPart, err := changesetMultiReader.NextPart()
+	if err != nil {
+		return err
+	}
+
+	changesetPartContents, err := ioutil.ReadAll(changesetPart)
+	if err != nil {
+		return err
+	}
+
+	changesetPartReader := bytes.NewReader(changesetPartContents)
+	changesetPartBufioReader := bufio.NewReader(changesetPartReader)
+	changesetResp, err := http.ReadResponse(changesetPartBufioReader, req)
+	if err != nil {
+		return err
+	}
+
+	if changesetResp.StatusCode != 204 {
+		changesetBody, err := readAndCloseBody(changesetResp.Body)
+		err = json.Unmarshal(changesetBody, &respToRet.odata)
+		if err != nil {
+			return err
+		}
+		respToRet.statusCode = changesetResp.StatusCode
+	}
+
+	return nil
+}
+
+func genBatchReader(batchBoundary string, respBody []byte) (*bytes.Reader, string, error) {
+
+	respBodyString := string(respBody)
+	respBodyReader := strings.NewReader(respBodyString)
+
+	// reading batchresponse
+	batchMultiReader := multipart.NewReader(respBodyReader, batchBoundary)
+	batchPart, err := batchMultiReader.NextPart()
+	if err != nil {
+		return nil, "", err
+	}
+
+	batchPartContents, err := ioutil.ReadAll(batchPart)
+	if err != nil {
+		return nil, "", err
+	}
+
+	_, changesetHeader, err := mime.ParseMediaType(batchPart.Header.Get("Content-Type"))
+	if err != nil {
+		return nil, "", err
+	}
+
+	changesetBoundary := changesetHeader["boundary"]
+	batchPartBuf := bytes.NewReader(batchPartContents)
+
+	return batchPartBuf, changesetBoundary, nil
 }
 
 func (c Client) execInternalJSONOrig(verb, url string, headers map[string]string, body io.Reader, auth authentication) (*odataResponse, error) {
