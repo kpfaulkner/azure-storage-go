@@ -892,8 +892,6 @@ func (b BlobStorageClient) IncrementalCopyBlob(container, name, sourceBlobURL st
 
 	headers := b.client.getStandardHeaders()
 	headers["x-ms-copy-source"] = sourceBlobURL
-	fmt.Printf("sourceblob url %s", sourceBlobURL)
-	fmt.Printf("incrementcopy url is %s", uri)
 	resp, err := b.client.exec(http.MethodPut, uri, headers, nil, b.auth)
 	if err != nil {
 		return "", err

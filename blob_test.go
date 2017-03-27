@@ -506,125 +506,57 @@ func (s *StorageBlobSuite) TestSetBlobProperties(c *chk.C) {
 	c.Check(mPut.ContentLanguage, chk.Equals, props.ContentLanguage)
 }
 
-func (s *StorageBlobSuite) TestIncrementalCopyBlobToEmptyBlobNoTimeout(c *chk.C) {
+func (s *StorageBlobSuite) TestIncrementalCopyBlobNoTimeout(c *chk.C) {
 	cli := getBlobClient(c)
 	cnt := cli.GetContainerReference(randContainer())
 	c.Assert(cnt.Create(), chk.IsNil)
 	defer cnt.Delete()
 
-	destCnt := cli.GetContainerReference(randContainer())
-	c.Assert(destCnt.Create(), chk.IsNil)
-	defer destCnt.Delete()
-
 	blob := randName(5)
 	size := int64(10 * 1024 * 1024)
 	c.Assert(cli.PutPageBlob(cnt.Name, blob, size, nil), chk.IsNil)
+
 	snapshotTime, err := cli.SnapshotBlob(cnt.Name, blob, 0, nil)
 	c.Assert(err, chk.IsNil)
 	c.Assert(snapshotTime, chk.NotNil)
+	expiry := now.UTC().Add(time.Hour)
 
+	u, err := cli.GetBlobSASURI(cnt.Name, blob, expiry, "r")
+	c.Assert(err, chk.IsNil)
+	snapshotTimeFormatted := snapshotTime.Format("2006-01-02T15:04:05.0000000Z")
 	destBlob := randName(5)
 
-	snapshotURL := fmt.Sprintf("https://foo.blob.core.windows.net/%s/%s?snapshot=%s", cnt.Name, blob, snapshotTime)
+	snapshotURL := fmt.Sprintf("%s&snapshot=%s", u, snapshotTimeFormatted)
 	copyID, err := cli.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 0)
 	c.Assert(copyID, chk.NotNil)
 	c.Assert(err, chk.IsNil)
 }
 
-func (s *StorageBlobSuite) TestIncrementalCopyBlobToEmptyBlobTimeout(c *chk.C) {
+func (s *StorageBlobSuite) TestIncrementalCopyBlobWithTimeout(c *chk.C) {
 	cli := getBlobClient(c)
 	cnt := cli.GetContainerReference(randContainer())
 	c.Assert(cnt.Create(), chk.IsNil)
 	defer cnt.Delete()
 
-	destCnt := cli.GetContainerReference(randContainer())
-	c.Assert(destCnt.Create(), chk.IsNil)
-	defer destCnt.Delete()
-
 	blob := randName(5)
 	size := int64(10 * 1024 * 1024)
 	c.Assert(cli.PutPageBlob(cnt.Name, blob, size, nil), chk.IsNil)
+
 	snapshotTime, err := cli.SnapshotBlob(cnt.Name, blob, 0, nil)
 	c.Assert(err, chk.IsNil)
 	c.Assert(snapshotTime, chk.NotNil)
+	expiry := now.UTC().Add(time.Hour)
 
-	destBlob := randName(5)
-	snapshotURL := fmt.Sprintf("https://foo.blob.core.windows.net/%s/%s?snapshot=%s", cnt.Name, blob, snapshotTime)
-	copyID, err := cli.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 30)
-	c.Assert(copyID, chk.NotNil)
+	u, err := cli.GetBlobSASURI(cnt.Name, blob, expiry, "r")
 	c.Assert(err, chk.IsNil)
-}
-
-func (s *StorageBlobSuite) TestIncrementalCopyBlobToExistingBlobNoTimeout(c *chk.C) {
-	cli := getBlobClient(c)
-	cnt := cli.GetContainerReference(randContainer())
-	c.Assert(cnt.Create(), chk.IsNil)
-	defer cnt.Delete()
-
-	destCnt := cli.GetContainerReference(randContainer())
-	c.Assert(destCnt.Create(), chk.IsNil)
-	defer destCnt.Delete()
+	snapshotTimeFormatted := snapshotTime.Format("2006-01-02T15:04:05.0000000Z")
 	destBlob := randName(5)
 
-	blob := randName(5)
-	size := int64(10 * 1024 * 1024)
-	c.Assert(cli.PutPageBlob(cnt.Name, blob, size, nil), chk.IsNil)
-	snapshotTime, err := cli.SnapshotBlob(cnt.Name, blob, 0, nil)
-	c.Assert(err, chk.IsNil)
-	c.Assert(snapshotTime, chk.NotNil)
-
-	snapshotURL := fmt.Sprintf("https://foo.blob.core.windows.net/%s/%s?snapshot=%s", cnt.Name, blob, snapshotTime)
-	copyID, err := cli.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 0)
-	c.Assert(copyID, chk.NotNil)
-	c.Assert(err, chk.IsNil)
-
-	// update blob.
-	chunk1 := []byte(randString(1024))
-	c.Assert(cli.PutPage(cnt.Name, blob, 0, int64(len(chunk1)-1), PageWriteTypeUpdate, chunk1, nil), chk.IsNil)
-	snapshotTime2, err := cli.SnapshotBlob(cnt.Name, blob, 0, nil)
-
-	snapshotURL = fmt.Sprintf("https://foo.blob.core.windows.net/%s/%s?snapshot=%s", cnt.Name, blob, snapshotTime2)
-
-	// second time around (copying 2 snapshots in a row, should still be ok)
-	copyID, err = cli.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 0)
-	c.Assert(copyID, chk.NotNil)
-	c.Assert(err, chk.IsNil)
-}
-
-func (s *StorageBlobSuite) TestIncrementalCopyBlobToExistingBlobTimeout(c *chk.C) {
-	cli := getBlobClient(c)
-	cnt := cli.GetContainerReference(randContainer())
-	c.Assert(cnt.Create(), chk.IsNil)
-	defer cnt.Delete()
-
-	destCnt := cli.GetContainerReference(randContainer())
-	c.Assert(destCnt.Create(), chk.IsNil)
-	defer destCnt.Delete()
-	destBlob := randName(5)
-
-	blob := randName(5)
-	size := int64(10 * 1024 * 1024)
-	c.Assert(cli.PutPageBlob(cnt.Name, blob, size, nil), chk.IsNil)
-	snapshotTime, err := cli.SnapshotBlob(cnt.Name, blob, 0, nil)
-	c.Assert(err, chk.IsNil)
-	c.Assert(snapshotTime, chk.NotNil)
-
-	snapshotURL := fmt.Sprintf("https://foo.blob.core.windows.net/%s/%s?snapshot=%s", cnt.Name, blob, snapshotTime)
+	snapshotURL := fmt.Sprintf("%s&snapshot=%s", u, snapshotTimeFormatted)
 	copyID, err := cli.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 30)
 	c.Assert(copyID, chk.NotNil)
 	c.Assert(err, chk.IsNil)
 
-	// update blob.
-	chunk1 := []byte(randString(1024))
-	c.Assert(cli.PutPage(cnt.Name, blob, 0, int64(len(chunk1)-1), PageWriteTypeUpdate, chunk1, nil), chk.IsNil)
-	snapshotTime2, err := cli.SnapshotBlob(cnt.Name, blob, 0, nil)
-
-	snapshotURL = fmt.Sprintf("https://foo.blob.core.windows.net/%s/%s?snapshot=%s", cnt.Name, blob, snapshotTime2)
-
-	// second time around (copying 2 snapshots in a row, should still be ok)
-	copyID, err = cli.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 30)
-	c.Assert(copyID, chk.NotNil)
-	c.Assert(err, chk.IsNil)
 }
 
 func (s *StorageBlobSuite) TestSnapshotBlob(c *chk.C) {
