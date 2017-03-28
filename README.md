@@ -18,3 +18,10 @@ This package includes support for [Azure Storage Emulator](https://azure.microso
 # Contributing
 
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+When contributing, please conform to the following practices:
+ - Target the 'dev' branch. This practice ensures that `go get` retreives more stable bits.
+ - Run [gofmt](https://golang.org/cmd/gofmt/) to use standard go formatting.
+ - Run [golint](https://github.com/golang/lint) to conform to standard naming conventions.
+ - Run [go vet](https://golang.org/cmd/vet/) to catch common Go mistakes.
+ - Use [GoASTScanner/gas](https://github.com/GoASTScanner/gas) to ensure there are no common security violations in your contribution.
