@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"net/url"
 	"time"
 
 	"github.com/satori/uuid"
@@ -13,9 +12,9 @@ func (s *StorageTableSuite) Test_BatchInsertMultipleEntities(c *chk.C) {
 	cli := getBasicClient(c).GetTableService()
 	table := cli.GetTableReference(randTable())
 
-	err := table.Create(EmptyPayload, 30)
+	err := table.Create(30, EmptyPayload, nil)
 	c.Assert(err, chk.IsNil)
-	defer table.Delete(30)
+	defer table.Delete(30, nil)
 
 	entity := table.GetEntityReference("mypartitionkey", "myrowkey")
 	props := map[string]interface{}{
@@ -44,18 +43,22 @@ func (s *StorageTableSuite) Test_BatchInsertMultipleEntities(c *chk.C) {
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 
-	entities, err := table.ExecuteQuery(url.Values{}, 30)
+	options := QueryOptions{
+		Top: 2,
+	}
+
+	results, err := table.QueryEntities(30, FullMetadata, &options)
 	c.Assert(err, chk.IsNil)
-	c.Assert(entities.Entities, chk.HasLen, 2)
+	c.Assert(results.Entities, chk.HasLen, 2)
 }
 
 func (s *StorageTableSuite) Test_BatchInsertSameEntryMultipleTimes(c *chk.C) {
 	cli := getBasicClient(c).GetTableService()
 	table := cli.GetTableReference(randTable())
 
-	err := table.Create(EmptyPayload, 30)
+	err := table.Create(30, EmptyPayload, nil)
 	c.Assert(err, chk.IsNil)
-	defer table.Delete(30)
+	defer table.Delete(30, nil)
 
 	entity := table.GetEntityReference("mypartitionkey", "myrowkey")
 	props := map[string]interface{}{
@@ -83,9 +86,9 @@ func (s *StorageTableSuite) Test_BatchInsertDeleteSameEntity(c *chk.C) {
 	cli := getBasicClient(c).GetTableService()
 	table := cli.GetTableReference(randTable())
 
-	err := table.Create(EmptyPayload, 30)
+	err := table.Create(30, EmptyPayload, nil)
 	c.Assert(err, chk.IsNil)
-	defer table.Delete(30)
+	defer table.Delete(30, nil)
 
 	entity := table.GetEntityReference("mypartitionkey", "myrowkey")
 	props := map[string]interface{}{
@@ -114,9 +117,9 @@ func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C)
 	cli := getBasicClient(c).GetTableService()
 	table := cli.GetTableReference(randTable())
 
-	err := table.Create(EmptyPayload, 30)
+	err := table.Create(30, EmptyPayload, nil)
 	c.Assert(err, chk.IsNil)
-	defer table.Delete(30)
+	defer table.Delete(30, nil)
 
 	entity := table.GetEntityReference("mypartitionkey", "myrowkey")
 	props := map[string]interface{}{
@@ -133,27 +136,31 @@ func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 
-	entities, err := table.ExecuteQuery(url.Values{}, 30)
+	options := QueryOptions{
+		Top: 2,
+	}
+
+	results, err := table.QueryEntities(30, FullMetadata, &options)
 	c.Assert(err, chk.IsNil)
-	c.Assert(entities.Entities, chk.HasLen, 1)
+	c.Assert(results.Entities, chk.HasLen, 1)
 
 	batch = table.NewTableBatch()
 	batch.DeleteEntity(entity)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 
-	entities, err = table.ExecuteQuery(url.Values{}, 30)
+	results, err = table.QueryEntities(30, FullMetadata, &options)
 	c.Assert(err, chk.IsNil)
-	c.Assert(entities.Entities, chk.HasLen, 0)
+	c.Assert(results.Entities, chk.HasLen, 0)
 }
 
 func (s *StorageTableSuite) Test_BatchInsertThenMergeDifferentBatches(c *chk.C) {
 	cli := getBasicClient(c).GetTableService()
 	table := cli.GetTableReference(randTable())
 
-	err := table.Create(EmptyPayload, 30)
+	err := table.Create(30, EmptyPayload, nil)
 	c.Assert(err, chk.IsNil)
-	defer table.Delete(30)
+	defer table.Delete(30, nil)
 
 	entity := table.GetEntityReference("mypartitionkey", "myrowkey")
 	props := map[string]interface{}{
@@ -185,7 +192,11 @@ func (s *StorageTableSuite) Test_BatchInsertThenMergeDifferentBatches(c *chk.C) 
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 
-	entities, err := table.ExecuteQuery(url.Values{}, 30)
+	options := QueryOptions{
+		Top: 2,
+	}
+
+	results, err := table.QueryEntities(30, FullMetadata, &options)
 	c.Assert(err, chk.IsNil)
-	c.Assert(entities.Entities, chk.HasLen, 1)
+	c.Assert(results.Entities, chk.HasLen, 1)
 }
