@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
+	"time"
 
 	chk "gopkg.in/check.v1"
 )
@@ -99,4 +101,70 @@ func (s *CopyBlobSuite) TestAbortBlobCopy(c *chk.C) {
 
 	// abort should fail (over already)
 	c.Assert(err.(AzureStorageServiceError).StatusCode, chk.Equals, http.StatusConflict)
+}
+
+func (s *StorageBlobSuite) TestIncrementalCopyBlobNoTimeout(c *chk.C) {
+
+	if testing.Short() {
+		c.Skip("skipping blob copy in short mode, no SLA on async operation")
+	}
+
+	cli := getBlobClient(c)
+	cnt := cli.GetContainerReference(randContainer())
+	c.Assert(cnt.Create(nil), chk.IsNil)
+	defer cnt.Delete(nil)
+
+	b := cnt.GetBlobReference(randName(5))
+	size := int64(10 * 1024 * 1024)
+	b.Properties.ContentLength = size
+	c.Assert(b.PutPageBlob(nil), chk.IsNil)
+
+	snapshotTime, err := b.CreateSnapshot(nil)
+	c.Assert(err, chk.IsNil)
+	c.Assert(snapshotTime, chk.NotNil)
+
+	expiry := now.UTC().Add(time.Hour)
+
+	u, err := b.GetSASURI(expiry, "r")
+	c.Assert(err, chk.IsNil)
+	snapshotTimeFormatted := snapshotTime.Format("2006-01-02T15:04:05.0000000Z")
+	destBlob := randName(5)
+
+	snapshotURL := fmt.Sprintf("%s&snapshot=%s", u, snapshotTimeFormatted)
+	copyID, err := b.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 0)
+	c.Assert(copyID, chk.NotNil)
+	c.Assert(err, chk.IsNil)
+}
+
+func (s *StorageBlobSuite) TestIncrementalCopyBlobWithTimeout(c *chk.C) {
+	if testing.Short() {
+		c.Skip("skipping blob copy in short mode, no SLA on async operation")
+	}
+
+	cli := getBlobClient(c)
+	cnt := cli.GetContainerReference(randContainer())
+	c.Assert(cnt.Create(nil), chk.IsNil)
+	defer cnt.Delete(nil)
+
+	b := cnt.GetBlobReference(randName(5))
+	size := int64(10 * 1024 * 1024)
+	b.Properties.ContentLength = size
+	c.Assert(b.PutPageBlob(nil), chk.IsNil)
+
+	snapshotTime, err := b.CreateSnapshot(nil)
+	c.Assert(err, chk.IsNil)
+	c.Assert(snapshotTime, chk.NotNil)
+
+	expiry := now.UTC().Add(time.Hour)
+
+	u, err := b.GetSASURI(expiry, "r")
+	c.Assert(err, chk.IsNil)
+	snapshotTimeFormatted := snapshotTime.Format("2006-01-02T15:04:05.0000000Z")
+	destBlob := randName(5)
+
+	snapshotURL := fmt.Sprintf("%s&snapshot=%s", u, snapshotTimeFormatted)
+	copyID, err := b.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 30)
+	c.Assert(copyID, chk.NotNil)
+	c.Assert(err, chk.IsNil)
+
 }

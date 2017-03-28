@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -151,4 +152,37 @@ func (b *Blob) WaitForCopy(copyID string) error {
 			return fmt.Errorf("storage: unhandled blob copy status: '%s'", b.Properties.CopyStatus)
 		}
 	}
+}
+
+// IncrementalCopyBlob copies a snapshot of a source blob and copies to the destination container and blobName
+// sourceBlob parameter must be a valid snapshot URL of the original blob.
+//
+// See https://docs.microsoft.com/en-us/rest/api/storageservices/fileservices/incremental-copy-blob
+func (b *Blob) IncrementalCopyBlob(container, name, sourceBlobURL string, timeout uint) (string, error) {
+	params := url.Values{"comp": {"incrementalcopy"}}
+	if timeout > 0 {
+		params.Add("timeout", strconv.Itoa(int(timeout)))
+	}
+
+	// get URI of destination blob
+	uri := b.Container.bsc.client.getEndpoint(blobServiceName, fmt.Sprintf("%s/%s", container, name), params)
+
+	headers := b.Container.bsc.client.getStandardHeaders()
+	headers["x-ms-copy-source"] = sourceBlobURL
+
+	resp, err := b.Container.bsc.client.exec(http.MethodPut, uri, headers, nil, b.Container.bsc.auth)
+	if err != nil {
+		return "", err
+	}
+	defer readAndCloseBody(resp.body)
+
+	if err := checkRespCode(resp.statusCode, []int{http.StatusAccepted}); err != nil {
+		return "", err
+	}
+
+	copyID := resp.headers.Get("x-ms-copy-id")
+	if copyID == "" {
+		return "", errors.New("Got empty copy id header")
+	}
+	return copyID, nil
 }
