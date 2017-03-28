@@ -47,8 +47,7 @@ type TableBatch struct {
 	Table *Table
 }
 
-// GetEntityReference returns an Entity object with the specified
-// partition key and row key.
+// NewTableBatch return new TableBatch for populating.
 func (t *Table) NewTableBatch() TableBatch {
 	return TableBatch{
 		Table: t,
