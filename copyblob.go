@@ -156,7 +156,7 @@ func (b *Blob) WaitForCopy(copyID string) error {
 // IncrementalCopyBlob copies a snapshot of a source blob and copies to referring blob
 // sourceBlob parameter must be a valid snapshot URL of the original blob.
 //
-// See https://docs.microsoft.com/en-us/rest/api/storageservices/fileservices/incremental-copy-blob
+// See https://docs.microsoft.com/en-us/rest/api/storageservices/fileservices/incremental-copy-blob .
 func (b *Blob) IncrementalCopyBlob(sourceBlobURL string, snapshotTime time.Time, options *CopyOptions) (string, error) {
 	params := url.Values{"comp": {"incrementalcopy"}}
 
