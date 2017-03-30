@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -154,21 +153,32 @@ func (b *Blob) WaitForCopy(copyID string) error {
 	}
 }
 
-// IncrementalCopyBlob copies a snapshot of a source blob and copies to the destination container and blobName
+// IncrementalCopyBlob copies a snapshot of a source blob and copies to referring blob
 // sourceBlob parameter must be a valid snapshot URL of the original blob.
 //
 // See https://docs.microsoft.com/en-us/rest/api/storageservices/fileservices/incremental-copy-blob
-func (b *Blob) IncrementalCopyBlob(container, name, sourceBlobURL string, timeout uint) (string, error) {
+func (b *Blob) IncrementalCopyBlob(sourceBlobURL string, snapshotTime time.Time, options *CopyOptions) (string, error) {
 	params := url.Values{"comp": {"incrementalcopy"}}
-	if timeout > 0 {
-		params.Add("timeout", strconv.Itoa(int(timeout)))
+
+	// need formatting to 7 deical places so it's friendly to Windows and *nix
+	snapshotTimeFormatted := snapshotTime.Format("2006-01-02T15:04:05.0000000Z")
+	snapshotURL := fmt.Sprintf("%s&snapshot=%s", sourceBlobURL, snapshotTimeFormatted)
+
+	headers := b.Container.bsc.client.getStandardHeaders()
+	headers["x-ms-copy-source"] = snapshotURL
+
+	if options != nil {
+		addTimeout(params, options.Timeout)
+		headers = addToHeaders(headers, "x-ms-client-request-id", options.RequestID)
+		headers = addTimeToHeaders(headers, "x-ms-if-modified-since", options.Destiny.IfModifiedSince)
+		headers = addTimeToHeaders(headers, "x-ms-if-unmodified-since", options.Destiny.IfUnmodifiedSince)
+		headers = addToHeaders(headers, "x-ms-if-match", options.Destiny.IfMatch)
+		headers = addToHeaders(headers, "x-ms-if-none-match", options.Destiny.IfNoneMatch)
+
 	}
 
 	// get URI of destination blob
-	uri := b.Container.bsc.client.getEndpoint(blobServiceName, fmt.Sprintf("%s/%s", container, name), params)
-
-	headers := b.Container.bsc.client.getStandardHeaders()
-	headers["x-ms-copy-source"] = sourceBlobURL
+	uri := b.Container.bsc.client.getEndpoint(blobServiceName, b.buildPath(), params)
 
 	resp, err := b.Container.bsc.client.exec(http.MethodPut, uri, headers, nil, b.Container.bsc.auth)
 	if err != nil {

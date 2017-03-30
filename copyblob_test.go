@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -124,23 +123,16 @@ func (s *StorageBlobSuite) TestIncrementalCopyBlobNoTimeout(c *chk.C) {
 	c.Assert(snapshotTime, chk.NotNil)
 
 	expiry := now.UTC().Add(time.Hour)
-
 	u, err := b.GetSASURI(expiry, "r")
 	c.Assert(err, chk.IsNil)
-	snapshotTimeFormatted := snapshotTime.Format("2006-01-02T15:04:05.0000000Z")
-	destBlob := randName(5)
 
-	snapshotURL := fmt.Sprintf("%s&snapshot=%s", u, snapshotTimeFormatted)
-	copyID, err := b.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 0)
+	destBlob := cnt.GetBlobReference(randName(5))
+	copyID, err := destBlob.IncrementalCopyBlob(u, *snapshotTime, nil)
 	c.Assert(copyID, chk.NotNil)
 	c.Assert(err, chk.IsNil)
 }
 
 func (s *StorageBlobSuite) TestIncrementalCopyBlobWithTimeout(c *chk.C) {
-	if testing.Short() {
-		c.Skip("skipping blob copy in short mode, no SLA on async operation")
-	}
-
 	cli := getBlobClient(c)
 	cnt := cli.GetContainerReference(randContainer())
 	c.Assert(cnt.Create(nil), chk.IsNil)
@@ -156,14 +148,11 @@ func (s *StorageBlobSuite) TestIncrementalCopyBlobWithTimeout(c *chk.C) {
 	c.Assert(snapshotTime, chk.NotNil)
 
 	expiry := now.UTC().Add(time.Hour)
-
 	u, err := b.GetSASURI(expiry, "r")
 	c.Assert(err, chk.IsNil)
-	snapshotTimeFormatted := snapshotTime.Format("2006-01-02T15:04:05.0000000Z")
-	destBlob := randName(5)
 
-	snapshotURL := fmt.Sprintf("%s&snapshot=%s", u, snapshotTimeFormatted)
-	copyID, err := b.IncrementalCopyBlob(cnt.Name, destBlob, snapshotURL, 30)
+	destBlob := cnt.GetBlobReference(randName(5))
+	copyID, err := destBlob.IncrementalCopyBlob(u, *snapshotTime, &CopyOptions{Timeout: 30})
 	c.Assert(copyID, chk.NotNil)
 	c.Assert(err, chk.IsNil)
 
