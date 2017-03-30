@@ -23,9 +23,24 @@ type CopyOptions struct {
 	RequestID string
 }
 
+// IncrementalCopyOptions includes the options for an incremental copy blob operation
+type IncrementalCopyOptions struct {
+	Timeout     uint
+	Destination IncrementalCopyOptionsConditions
+	RequestID   string
+}
+
 // CopyOptionsConditions includes some conditional options in a copy blob operation
 type CopyOptionsConditions struct {
 	LeaseID           string
+	IfModifiedSince   *time.Time
+	IfUnmodifiedSince *time.Time
+	IfMatch           string
+	IfNoneMatch       string
+}
+
+// IncrementalCopyOptionsConditions includes some conditional options in a copy blob operation
+type IncrementalCopyOptionsConditions struct {
 	IfModifiedSince   *time.Time
 	IfUnmodifiedSince *time.Time
 	IfMatch           string
@@ -157,10 +172,10 @@ func (b *Blob) WaitForCopy(copyID string) error {
 // sourceBlob parameter must be a valid snapshot URL of the original blob.
 //
 // See https://docs.microsoft.com/en-us/rest/api/storageservices/fileservices/incremental-copy-blob .
-func (b *Blob) IncrementalCopyBlob(sourceBlobURL string, snapshotTime time.Time, options *CopyOptions) (string, error) {
+func (b *Blob) IncrementalCopyBlob(sourceBlobURL string, snapshotTime time.Time, options *IncrementalCopyOptions) (string, error) {
 	params := url.Values{"comp": {"incrementalcopy"}}
 
-	// need formatting to 7 deical places so it's friendly to Windows and *nix
+	// need formatting to 7 decical places so it's friendly to Windows and *nix
 	snapshotTimeFormatted := snapshotTime.Format("2006-01-02T15:04:05.0000000Z")
 	snapshotURL := fmt.Sprintf("%s&snapshot=%s", sourceBlobURL, snapshotTimeFormatted)
 
@@ -170,11 +185,10 @@ func (b *Blob) IncrementalCopyBlob(sourceBlobURL string, snapshotTime time.Time,
 	if options != nil {
 		addTimeout(params, options.Timeout)
 		headers = addToHeaders(headers, "x-ms-client-request-id", options.RequestID)
-		headers = addTimeToHeaders(headers, "x-ms-if-modified-since", options.Destiny.IfModifiedSince)
-		headers = addTimeToHeaders(headers, "x-ms-if-unmodified-since", options.Destiny.IfUnmodifiedSince)
-		headers = addToHeaders(headers, "x-ms-if-match", options.Destiny.IfMatch)
-		headers = addToHeaders(headers, "x-ms-if-none-match", options.Destiny.IfNoneMatch)
-
+		headers = addTimeToHeaders(headers, "x-ms-if-modified-since", options.Destination.IfModifiedSince)
+		headers = addTimeToHeaders(headers, "x-ms-if-unmodified-since", options.Destination.IfUnmodifiedSince)
+		headers = addToHeaders(headers, "x-ms-if-match", options.Destination.IfMatch)
+		headers = addToHeaders(headers, "x-ms-if-none-match", options.Destination.IfNoneMatch)
 	}
 
 	// get URI of destination blob
