@@ -152,7 +152,7 @@ func (s *StorageBlobSuite) TestIncrementalCopyBlobWithTimeout(c *chk.C) {
 	c.Assert(err, chk.IsNil)
 
 	destBlob := cnt.GetBlobReference(randName(5))
-	copyID, err := destBlob.IncrementalCopyBlob(u, *snapshotTime, &CopyOptions{Timeout: 30})
+	copyID, err := destBlob.IncrementalCopyBlob(u, *snapshotTime, &IncrementalCopyOptions{Timeout: 30})
 	c.Assert(copyID, chk.NotNil)
 	c.Assert(err, chk.IsNil)
 
