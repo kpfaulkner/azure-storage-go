@@ -33,7 +33,7 @@ func (e TableBatchError) Error() string {
 	return fmt.Sprintf("Error code %s : Msg %s", e.Code, e.Message)
 }
 
-// TableBatch stores all the enties that will be operated on during a batch process.
+// TableBatch stores all the entities that will be operated on during a batch process.
 // Entities can be inserted, replaced or deleted.
 type TableBatch struct {
 	InsertEntitySlice          []Entity
@@ -47,8 +47,8 @@ type TableBatch struct {
 	Table *Table
 }
 
-// NewTableBatch return new TableBatch for populating.
-func (t *Table) NewTableBatch() TableBatch {
+// NewBatch return new TableBatch for populating.
+func (t *Table) NewBatch() TableBatch {
 	return TableBatch{
 		Table: t,
 	}
@@ -86,20 +86,19 @@ func (t *TableBatch) MergeEntity(entity Entity) {
 
 // ExecuteBatch executes many table operations in one request to Azure.
 // The operations can be combinations of Insert, Delete, Replace and Merge
-//
 // Creates the inner changeset body (various operations, Insert, Delete etc) then creates the outer request packet that encompasses
 // the changesets.
 func (t *TableBatch) ExecuteBatch() error {
 
 	changesetBoundary := fmt.Sprintf("changeset_%s", uuid.NewV1())
 	uri := t.Table.tsc.client.getEndpoint(tableServiceName, "$batch", nil)
-	changesetBody, err := t.generateChangesetBody(uri, changesetBoundary)
+	changesetBody, err := t.generateChangesetBody(changesetBoundary)
 	if err != nil {
 		return err
 	}
 
 	boundary := fmt.Sprintf("batch_%s", uuid.NewV1())
-	body, err := generateBody(changesetBody, uri, changesetBoundary, boundary)
+	body, err := generateBody(changesetBody, changesetBoundary, boundary)
 	if err != nil {
 		return err
 	}
@@ -114,17 +113,23 @@ func (t *TableBatch) ExecuteBatch() error {
 	defer resp.body.Close()
 
 	if err = checkRespCode(resp.statusCode, []int{http.StatusAccepted}); err != nil {
-		detailedErr := TableBatchError{}
-		detailedErr.Code = resp.odata.Err.Code
-		detailedErr.Message = resp.odata.Err.Message.Value
-		return detailedErr
+		requestID, date, version := getDebugHeaders(resp.headers)
+
+		return AzureStorageServiceError{
+			StatusCode: resp.statusCode,
+			Code:       resp.odata.Err.Code,
+			RequestID:  requestID,
+			Date:       date,
+			APIVersion: version,
+			Message:    resp.odata.Err.Message.Value,
+		}
 	}
 
 	return nil
 }
 
 // generateBody generates the complete body for the batch request.
-func generateBody(changeSetBody *bytes.Buffer, tableURL string, changesetBoundary string, boundary string) (*bytes.Buffer, error) {
+func generateBody(changeSetBody *bytes.Buffer, changesetBoundary string, boundary string) (*bytes.Buffer, error) {
 
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
@@ -139,7 +144,7 @@ func generateBody(changeSetBody *bytes.Buffer, tableURL string, changesetBoundar
 
 // generateChangesetBody generates the individual changesets for the various operations within the batch request.
 // There is a changeset for Insert, Delete, Merge etc.
-func (t *TableBatch) generateChangesetBody(tableURL string, changesetBoundary string) (*bytes.Buffer, error) {
+func (t *TableBatch) generateChangesetBody(changesetBoundary string) (*bytes.Buffer, error) {
 
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
@@ -159,16 +164,12 @@ func (t *TableBatch) generateChangesetBody(tableURL string, changesetBoundary st
 func generateVerb(op int) (string, error) {
 	switch op {
 	case insertOp:
-		return "POST", nil
+		return http.MethodPost, nil
 	case deleteOp:
-		return "DELETE", nil
-	case mergeOp:
-		return "MERGE", nil
-	case replaceOp:
-		return "PUT", nil
-	case insertOrReplaceOp:
-		return "PUT", nil
-	case insertOrMergeOp:
+		return http.MethodDelete, nil
+	case replaceOp, insertOrReplaceOp:
+		return http.MethodPut, nil
+	case mergeOp, insertOrMergeOp:
 		return "MERGE", nil
 	default:
 		return "", errors.New("Unable to detect operation")
@@ -178,13 +179,12 @@ func generateVerb(op int) (string, error) {
 // generateQueryPath generates the query path for within the changesets
 // For inserts it will just be a table query path (table name)
 // but for other operations (modifying an existing entity) then
-// the partition/row keys need to be generated.s
+// the partition/row keys need to be generated.
 func (t *TableBatch) generateQueryPath(op int, entity Entity) string {
 	if op == insertOp {
 		return entity.Table.buildPath()
 	}
-
-	return fmt.Sprintf("%s(PartitionKey='%s', RowKey='%s')", t.Table.buildPath(), entity.PartitionKey, entity.RowKey)
+	return entity.buildPath()
 }
 
 // generateGenericOperationHeaders generates common headers for a given operation.
@@ -196,8 +196,10 @@ func generateGenericOperationHeaders(op int) []string {
 	headers = append(headers, fmt.Sprintf("%s: %s\r\n", "Content-Type", "application/json"))
 	headers = append(headers, fmt.Sprintf("%s: %s\r\n", "Prefer", "return-no-content"))
 
-	switch op {
-	case deleteOp:
+	// all 3 operations delete, replace and merge require the ETag to be set.
+	// For replace and merge it is the only way to distinguish them from the insertOrReplace/insertOrMerge
+	// operations. The ETag can be *, so will stick with that for now.
+	if op == deleteOp || op == replaceOp || op == mergeOp {
 		headers = append(headers, fmt.Sprintf("%s: %s\r\n", "If-Match", "*"))
 	}
 

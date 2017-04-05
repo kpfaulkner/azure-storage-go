@@ -36,7 +36,7 @@ func (s *StorageTableSuite) Test_BatchInsertMultipleEntities(c *chk.C) {
 	}
 	entity2.Properties = props2
 
-	batch := table.NewTableBatch()
+	batch := table.NewBatch()
 	batch.InsertOrReplaceEntity(entity)
 	batch.InsertOrReplaceEntity(entity2)
 
@@ -70,13 +70,13 @@ func (s *StorageTableSuite) Test_BatchInsertSameEntryMultipleTimes(c *chk.C) {
 	}
 	entity.Properties = props
 
-	batch := table.NewTableBatch()
+	batch := table.NewBatch()
 	batch.InsertOrReplaceEntity(entity)
 	batch.InsertOrReplaceEntity(entity)
 
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.NotNil)
-	v, ok := err.(TableBatchError)
+	v, ok := err.(AzureStorageServiceError)
 	if ok {
 		c.Assert(v.Code, chk.Equals, "InvalidDuplicateRow")
 	}
@@ -100,14 +100,14 @@ func (s *StorageTableSuite) Test_BatchInsertDeleteSameEntity(c *chk.C) {
 	}
 	entity.Properties = props
 
-	batch := table.NewTableBatch()
+	batch := table.NewBatch()
 	batch.InsertOrReplaceEntity(entity)
 	batch.DeleteEntity(entity)
 
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.NotNil)
 
-	v, ok := err.(TableBatchError)
+	v, ok := err.(AzureStorageServiceError)
 	if ok {
 		c.Assert(v.Code, chk.Equals, "InvalidDuplicateRow")
 	}
@@ -131,7 +131,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C)
 	}
 	entity.Properties = props
 
-	batch := table.NewTableBatch()
+	batch := table.NewBatch()
 	batch.InsertOrReplaceEntity(entity)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
@@ -144,7 +144,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C)
 	c.Assert(err, chk.IsNil)
 	c.Assert(results.Entities, chk.HasLen, 1)
 
-	batch = table.NewTableBatch()
+	batch = table.NewBatch()
 	batch.DeleteEntity(entity)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
@@ -172,7 +172,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenMergeDifferentBatches(c *chk.C) 
 	}
 	entity.Properties = props
 
-	batch := table.NewTableBatch()
+	batch := table.NewBatch()
 	batch.InsertOrReplaceEntity(entity)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
@@ -187,7 +187,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenMergeDifferentBatches(c *chk.C) 
 	}
 	entity2.Properties = props2
 
-	batch = table.NewTableBatch()
+	batch = table.NewBatch()
 	batch.InsertOrReplaceEntity(entity2)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
