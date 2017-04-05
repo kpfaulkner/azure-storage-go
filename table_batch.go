@@ -22,17 +22,6 @@ const (
 	insertOrMergeOp
 )
 
-// TableBatchError is used to return the errors from Batch requests. These are retrieved from
-// the inner response packets.
-type TableBatchError struct {
-	Code    string
-	Message string
-}
-
-func (e TableBatchError) Error() string {
-	return fmt.Sprintf("Error code %s : Msg %s", e.Code, e.Message)
-}
-
 // TableBatch stores all the entities that will be operated on during a batch process.
 // Entities can be inserted, replaced or deleted.
 type TableBatch struct {
