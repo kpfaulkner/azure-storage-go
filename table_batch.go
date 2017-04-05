@@ -88,6 +88,7 @@ func (t *TableBatch) MergeEntity(entity Entity) {
 // The operations can be combinations of Insert, Delete, Replace and Merge
 // Creates the inner changeset body (various operations, Insert, Delete etc) then creates the outer request packet that encompasses
 // the changesets.
+// As per document https://docs.microsoft.com/en-us/rest/api/storageservices/fileservices/performing-entity-group-transactions
 func (t *TableBatch) ExecuteBatch() error {
 
 	changesetBoundary := fmt.Sprintf("changeset_%s", uuid.NewV1())
