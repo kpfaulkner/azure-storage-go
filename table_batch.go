@@ -36,6 +36,13 @@ type TableBatch struct {
 	Table *Table
 }
 
+// defaultChangesetHeaders for changeSets
+var defaultChangesetHeaders map[string]string = map[string]string{
+	"Accept":       "application/json;odata=minimalmetadata",
+	"Content-Type": "application/json",
+	"Prefer":       "return-no-content",
+}
+
 // NewBatch return new TableBatch for populating.
 func (t *Table) NewBatch() TableBatch {
 	return TableBatch{
@@ -178,27 +185,22 @@ func (t *TableBatch) generateQueryPath(op int, entity Entity) string {
 }
 
 // generateGenericOperationHeaders generates common headers for a given operation.
-// TODO(kpfaulkner) keep these as Sprintf methods of just hardcode it outright?
-func generateGenericOperationHeaders(op int, force bool, e *Entity) []string {
+func generateGenericOperationHeaders(op int, force bool, e *Entity) map[string]string {
+	retval := map[string]string{}
 
-	headers := []string{}
-	headers = append(headers, fmt.Sprintf("%s: %s\r\n", "Accept", "application/json;odata=minimalmetadata"))
-	headers = append(headers, fmt.Sprintf("%s: %s\r\n", "Content-Type", "application/json"))
-	headers = append(headers, fmt.Sprintf("%s: %s\r\n", "Prefer", "return-no-content"))
+	for k, v := range defaultChangesetHeaders {
+		retval[k] = v
+	}
 
-	// all 3 operations delete, replace and merge require the ETag to be set.
-	// For replace and merge it is the only way to distinguish them from the insertOrReplace/insertOrMerge
-	// operations. The ETag can be *, so will stick with that for now.
 	if op == deleteOp || op == replaceOp || op == mergeOp {
 		if force {
-			headers = append(headers, fmt.Sprintf("%s: %s\r\n", "If-Match", "*"))
+			retval["If-Match"] = "*"
 		} else {
-			headers = append(headers, fmt.Sprintf("%s: %s\r\n", "If-Match", e.OdataEtag))
+			retval["If-Match"] = e.OdataEtag
 		}
 	}
 
-	headers = append(headers, "\r\n")
-	return headers
+	return retval
 }
 
 func (t *TableBatch) getEntitiesForOperation(op int) ([]Entity, error) {
@@ -238,7 +240,7 @@ func (t *TableBatch) generateEntitySubset(op int, boundary string, writer *multi
 	}
 
 	for _, entity := range entities {
-		genericOpHeaders := generateGenericOperationHeaders(op, true, &entity)
+		genericOpHeadersMap := generateGenericOperationHeaders(op, true, &entity)
 		queryPath := t.generateQueryPath(op, entity)
 		uri := t.Table.tsc.client.getEndpoint(tableServiceName, queryPath, nil)
 
@@ -247,9 +249,10 @@ func (t *TableBatch) generateEntitySubset(op int, boundary string, writer *multi
 
 		urlAndVerb := fmt.Sprintf("%s %s HTTP/1.1\r\n", verb, uri)
 		operationWriter.Write([]byte(urlAndVerb))
-		for _, header := range genericOpHeaders {
-			operationWriter.Write([]byte(header))
+		for k, v := range genericOpHeadersMap {
+			operationWriter.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, v)))
 		}
+		operationWriter.Write([]byte("\r\n")) // additional \r\n is needed per changeset separating the "headers" and the body.
 
 		// delete operation doesn't need a body.
 		if op != deleteOp {
@@ -257,7 +260,6 @@ func (t *TableBatch) generateEntitySubset(op int, boundary string, writer *multi
 			if err != nil {
 				return err
 			}
-
 			operationWriter.Write(body)
 		}
 	}
