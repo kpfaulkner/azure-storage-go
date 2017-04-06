@@ -96,7 +96,7 @@ func (t *TableBatch) ExecuteBatch() error {
 	headers := t.Table.tsc.client.getStandardHeaders()
 	headers[headerContentType] = fmt.Sprintf("multipart/mixed; boundary=%s", boundary)
 
-	resp, err := t.Table.tsc.client.execInternalJSON(http.MethodPost, uri, headers, bytes.NewReader(body.Bytes()), t.Table.tsc.auth, true)
+	resp, err := t.Table.tsc.client.execBatchOperationJSON(http.MethodPost, uri, headers, bytes.NewReader(body.Bytes()), t.Table.tsc.auth)
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func (t *TableBatch) generateQueryPath(op int, entity Entity) string {
 
 // generateGenericOperationHeaders generates common headers for a given operation.
 // TODO(kpfaulkner) keep these as Sprintf methods of just hardcode it outright?
-func generateGenericOperationHeaders(op int) []string {
+func generateGenericOperationHeaders(op int, force bool, e *Entity) []string {
 
 	headers := []string{}
 	headers = append(headers, fmt.Sprintf("%s: %s\r\n", "Accept", "application/json;odata=minimalmetadata"))
@@ -190,7 +190,11 @@ func generateGenericOperationHeaders(op int) []string {
 	// For replace and merge it is the only way to distinguish them from the insertOrReplace/insertOrMerge
 	// operations. The ETag can be *, so will stick with that for now.
 	if op == deleteOp || op == replaceOp || op == mergeOp {
-		headers = append(headers, fmt.Sprintf("%s: %s\r\n", "If-Match", "*"))
+		if force {
+			headers = append(headers, fmt.Sprintf("%s: %s\r\n", "If-Match", "*"))
+		} else {
+			headers = append(headers, fmt.Sprintf("%s: %s\r\n", "If-Match", e.OdataEtag))
+		}
 	}
 
 	headers = append(headers, "\r\n")
@@ -233,8 +237,8 @@ func (t *TableBatch) generateEntitySubset(op int, boundary string, writer *multi
 		return err
 	}
 
-	genericOpHeaders := generateGenericOperationHeaders(op)
 	for _, entity := range entities {
+		genericOpHeaders := generateGenericOperationHeaders(op, true, &entity)
 		queryPath := t.generateQueryPath(op, entity)
 		uri := t.Table.tsc.client.getEndpoint(tableServiceName, queryPath, nil)
 
