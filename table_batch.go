@@ -37,7 +37,7 @@ type TableBatch struct {
 }
 
 // defaultChangesetHeaders for changeSets
-var defaultChangesetHeaders map[string]string = map[string]string{
+var defaultChangesetHeaders = map[string]string{
 	"Accept":       "application/json;odata=minimalmetadata",
 	"Content-Type": "application/json",
 	"Prefer":       "return-no-content",
