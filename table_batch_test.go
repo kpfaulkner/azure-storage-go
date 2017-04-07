@@ -102,7 +102,7 @@ func (s *StorageTableSuite) Test_BatchInsertDeleteSameEntity(c *chk.C) {
 
 	batch := table.NewBatch()
 	batch.InsertOrReplaceEntity(entity, false)
-	batch.DeleteEntity(entity, false)
+	batch.DeleteEntity(entity, true)
 
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.NotNil)
@@ -145,7 +145,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C)
 	c.Assert(results.Entities, chk.HasLen, 1)
 
 	batch = table.NewBatch()
-	batch.DeleteEntity(entity, false)
+	batch.DeleteEntity(entity, true)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 
