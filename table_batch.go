@@ -22,15 +22,23 @@ const (
 	insertOrMergeOp
 )
 
+// BatchEntity used for tracking Entities to operate on and
+// whether operations (replace/merge etc) should be forced.
+// Wrapper for regular Entity with additional data specific for the entity.
+type BatchEntity struct {
+	Entity
+	Force bool
+}
+
 // TableBatch stores all the entities that will be operated on during a batch process.
 // Entities can be inserted, replaced or deleted.
 type TableBatch struct {
-	InsertEntitySlice          []Entity
-	InsertOrMergeEntitySlice   []Entity
-	InsertOrReplaceEntitySlice []Entity
-	ReplaceEntitySlice         []Entity
-	MergeEntitySlice           []Entity
-	DeleteEntitySlice          []Entity
+	InsertEntitySlice          []BatchEntity
+	InsertOrMergeEntitySlice   []BatchEntity
+	InsertOrReplaceEntitySlice []BatchEntity
+	ReplaceEntitySlice         []BatchEntity
+	MergeEntitySlice           []BatchEntity
+	DeleteEntitySlice          []BatchEntity
 
 	// reference to table we're operating on.
 	Table *Table
@@ -52,32 +60,38 @@ func (t *Table) NewBatch() TableBatch {
 
 // InsertEntity adds an entity in preparation for a batch insert.
 func (t *TableBatch) InsertEntity(entity Entity) {
-	t.InsertEntitySlice = append(t.InsertEntitySlice, entity)
+	be := BatchEntity{Entity: entity, Force: false}
+	t.InsertEntitySlice = append(t.InsertEntitySlice, be)
 }
 
 // InsertOrReplaceEntity adds an entity in preparation for a batch insert or replace.
-func (t *TableBatch) InsertOrReplaceEntity(entity Entity) {
-	t.InsertOrReplaceEntitySlice = append(t.InsertOrReplaceEntitySlice, entity)
+func (t *TableBatch) InsertOrReplaceEntity(entity Entity, force bool) {
+	be := BatchEntity{Entity: entity, Force: force}
+	t.InsertOrReplaceEntitySlice = append(t.InsertOrReplaceEntitySlice, be)
 }
 
 // InsertOrMergeEntity adds an entity in preparation for a batch insert or merge.
-func (t *TableBatch) InsertOrMergeEntity(entity Entity) {
-	t.InsertOrMergeEntitySlice = append(t.InsertOrMergeEntitySlice, entity)
+func (t *TableBatch) InsertOrMergeEntity(entity Entity, force bool) {
+	be := BatchEntity{Entity: entity, Force: force}
+	t.InsertOrMergeEntitySlice = append(t.InsertOrMergeEntitySlice, be)
 }
 
 // ReplaceEntity adds an entity in preparation for a batch replace.
 func (t *TableBatch) ReplaceEntity(entity Entity) {
-	t.ReplaceEntitySlice = append(t.ReplaceEntitySlice, entity)
+	be := BatchEntity{Entity: entity, Force: false}
+	t.ReplaceEntitySlice = append(t.ReplaceEntitySlice, be)
 }
 
 // DeleteEntity adds an entity in preparation for a batch delete
-func (t *TableBatch) DeleteEntity(entity Entity) {
-	t.DeleteEntitySlice = append(t.DeleteEntitySlice, entity)
+func (t *TableBatch) DeleteEntity(entity Entity, force bool) {
+	be := BatchEntity{Entity: entity, Force: force}
+	t.DeleteEntitySlice = append(t.DeleteEntitySlice, be)
 }
 
 // MergeEntity adds an entity in preparation for a batch merge
 func (t *TableBatch) MergeEntity(entity Entity) {
-	t.MergeEntitySlice = append(t.MergeEntitySlice, entity)
+	be := BatchEntity{Entity: entity, Force: false}
+	t.MergeEntitySlice = append(t.MergeEntitySlice, be)
 }
 
 // ExecuteBatch executes many table operations in one request to Azure.
@@ -203,7 +217,7 @@ func generateGenericOperationHeaders(op int, force bool, e *Entity) map[string]s
 	return retval
 }
 
-func (t *TableBatch) getEntitiesForOperation(op int) ([]Entity, error) {
+func (t *TableBatch) getEntitiesForOperation(op int) ([]BatchEntity, error) {
 	switch op {
 	case insertOp:
 		return t.InsertEntitySlice, nil
@@ -240,8 +254,8 @@ func (t *TableBatch) generateEntitySubset(op int, boundary string, writer *multi
 	}
 
 	for _, entity := range entities {
-		genericOpHeadersMap := generateGenericOperationHeaders(op, true, &entity)
-		queryPath := t.generateQueryPath(op, entity)
+		genericOpHeadersMap := generateGenericOperationHeaders(op, entity.Force, &entity.Entity)
+		queryPath := t.generateQueryPath(op, entity.Entity)
 		uri := t.Table.tsc.client.getEndpoint(tableServiceName, queryPath, nil)
 
 		operationWriter, _ := writer.CreatePart(h)
