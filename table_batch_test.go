@@ -37,8 +37,8 @@ func (s *StorageTableSuite) Test_BatchInsertMultipleEntities(c *chk.C) {
 	entity2.Properties = props2
 
 	batch := table.NewBatch()
-	batch.InsertOrReplaceEntity(entity, false)
-	batch.InsertOrReplaceEntity(entity2, false)
+	batch.InsertOrReplaceEntity(&entity, false)
+	batch.InsertOrReplaceEntity(&entity2, false)
 
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
@@ -71,8 +71,8 @@ func (s *StorageTableSuite) Test_BatchInsertSameEntryMultipleTimes(c *chk.C) {
 	entity.Properties = props
 
 	batch := table.NewBatch()
-	batch.InsertOrReplaceEntity(entity, false)
-	batch.InsertOrReplaceEntity(entity, false)
+	batch.InsertOrReplaceEntity(&entity, false)
+	batch.InsertOrReplaceEntity(&entity, false)
 
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.NotNil)
@@ -101,8 +101,8 @@ func (s *StorageTableSuite) Test_BatchInsertDeleteSameEntity(c *chk.C) {
 	entity.Properties = props
 
 	batch := table.NewBatch()
-	batch.InsertOrReplaceEntity(entity, false)
-	batch.DeleteEntity(entity, true)
+	batch.InsertOrReplaceEntity(&entity, false)
+	batch.DeleteEntity(&entity, true)
 
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.NotNil)
@@ -132,7 +132,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C)
 	entity.Properties = props
 
 	batch := table.NewBatch()
-	batch.InsertOrReplaceEntity(entity, false)
+	batch.InsertOrReplaceEntity(&entity, false)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 
@@ -145,7 +145,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenDeleteDifferentBatches(c *chk.C)
 	c.Assert(results.Entities, chk.HasLen, 1)
 
 	batch = table.NewBatch()
-	batch.DeleteEntity(entity, true)
+	batch.DeleteEntity(&entity, true)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 
@@ -173,7 +173,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenMergeDifferentBatches(c *chk.C) 
 	entity.Properties = props
 
 	batch := table.NewBatch()
-	batch.InsertOrReplaceEntity(entity, false)
+	batch.InsertOrReplaceEntity(&entity, false)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 
@@ -188,7 +188,7 @@ func (s *StorageTableSuite) Test_BatchInsertThenMergeDifferentBatches(c *chk.C) 
 	entity2.Properties = props2
 
 	batch = table.NewBatch()
-	batch.InsertOrReplaceEntity(entity2, false)
+	batch.InsertOrReplaceEntity(&entity2, false)
 	err = batch.ExecuteBatch()
 	c.Assert(err, chk.IsNil)
 

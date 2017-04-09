@@ -8,37 +8,37 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"strings"
 
 	"github.com/satori/uuid"
 )
 
+// Operation type. Insert, Delete, Replace etc.
+type Operation int
+
 // consts for batch operations.
 const (
-	insertOp = 1 << iota
-	deleteOp
-	replaceOp
-	mergeOp
-	insertOrReplaceOp
-	insertOrMergeOp
+	insertOp          = Operation(1)
+	deleteOp          = Operation(2)
+	replaceOp         = Operation(3)
+	mergeOp           = Operation(4)
+	insertOrReplaceOp = Operation(5)
+	insertOrMergeOp   = Operation(6)
 )
 
 // BatchEntity used for tracking Entities to operate on and
 // whether operations (replace/merge etc) should be forced.
 // Wrapper for regular Entity with additional data specific for the entity.
 type BatchEntity struct {
-	Entity
+	*Entity
 	Force bool
+	Op    Operation
 }
 
 // TableBatch stores all the entities that will be operated on during a batch process.
 // Entities can be inserted, replaced or deleted.
 type TableBatch struct {
-	InsertEntitySlice          []BatchEntity
-	InsertOrMergeEntitySlice   []BatchEntity
-	InsertOrReplaceEntitySlice []BatchEntity
-	ReplaceEntitySlice         []BatchEntity
-	MergeEntitySlice           []BatchEntity
-	DeleteEntitySlice          []BatchEntity
+	BatchEntitySlice []BatchEntity
 
 	// reference to table we're operating on.
 	Table *Table
@@ -59,39 +59,39 @@ func (t *Table) NewBatch() TableBatch {
 }
 
 // InsertEntity adds an entity in preparation for a batch insert.
-func (t *TableBatch) InsertEntity(entity Entity) {
-	be := BatchEntity{Entity: entity, Force: false}
-	t.InsertEntitySlice = append(t.InsertEntitySlice, be)
+func (t *TableBatch) InsertEntity(entity *Entity) {
+	be := BatchEntity{Entity: entity, Force: false, Op: insertOp}
+	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
 // InsertOrReplaceEntity adds an entity in preparation for a batch insert or replace.
-func (t *TableBatch) InsertOrReplaceEntity(entity Entity, force bool) {
-	be := BatchEntity{Entity: entity, Force: force}
-	t.InsertOrReplaceEntitySlice = append(t.InsertOrReplaceEntitySlice, be)
+func (t *TableBatch) InsertOrReplaceEntity(entity *Entity, force bool) {
+	be := BatchEntity{Entity: entity, Force: false, Op: insertOrReplaceOp}
+	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
 // InsertOrMergeEntity adds an entity in preparation for a batch insert or merge.
-func (t *TableBatch) InsertOrMergeEntity(entity Entity, force bool) {
-	be := BatchEntity{Entity: entity, Force: force}
-	t.InsertOrMergeEntitySlice = append(t.InsertOrMergeEntitySlice, be)
+func (t *TableBatch) InsertOrMergeEntity(entity *Entity, force bool) {
+	be := BatchEntity{Entity: entity, Force: false, Op: insertOrMergeOp}
+	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
 // ReplaceEntity adds an entity in preparation for a batch replace.
-func (t *TableBatch) ReplaceEntity(entity Entity) {
-	be := BatchEntity{Entity: entity, Force: false}
-	t.ReplaceEntitySlice = append(t.ReplaceEntitySlice, be)
+func (t *TableBatch) ReplaceEntity(entity *Entity) {
+	be := BatchEntity{Entity: entity, Force: false, Op: replaceOp}
+	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
 // DeleteEntity adds an entity in preparation for a batch delete
-func (t *TableBatch) DeleteEntity(entity Entity, force bool) {
-	be := BatchEntity{Entity: entity, Force: force}
-	t.DeleteEntitySlice = append(t.DeleteEntitySlice, be)
+func (t *TableBatch) DeleteEntity(entity *Entity, force bool) {
+	be := BatchEntity{Entity: entity, Force: false, Op: deleteOp}
+	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
 // MergeEntity adds an entity in preparation for a batch merge
-func (t *TableBatch) MergeEntity(entity Entity) {
-	be := BatchEntity{Entity: entity, Force: false}
-	t.MergeEntitySlice = append(t.MergeEntitySlice, be)
+func (t *TableBatch) MergeEntity(entity *Entity) {
+	be := BatchEntity{Entity: entity, Force: false, Op: mergeOp}
+	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
 // ExecuteBatch executes many table operations in one request to Azure.
@@ -124,19 +124,35 @@ func (t *TableBatch) ExecuteBatch() error {
 	defer resp.body.Close()
 
 	if err = checkRespCode(resp.statusCode, []int{http.StatusAccepted}); err != nil {
-		requestID, date, version := getDebugHeaders(resp.headers)
 
+		// check which batch failed.
+		operationFailedMessage := t.getFailedOperation(resp.odata.Err.Message.Value)
+		requestID, date, version := getDebugHeaders(resp.headers)
 		return AzureStorageServiceError{
 			StatusCode: resp.statusCode,
 			Code:       resp.odata.Err.Code,
 			RequestID:  requestID,
 			Date:       date,
 			APIVersion: version,
-			Message:    resp.odata.Err.Message.Value,
+			Message:    operationFailedMessage,
 		}
 	}
 
 	return nil
+}
+
+// getFailedOperation parses the original Azure error string and determines which operation failed
+// and generates appropriate message.
+func (t *TableBatch) getFailedOperation(errorMessage string) string {
+	// errorMessage consists of "number:string" we just need the number.
+	sp := strings.Split(errorMessage, ":")
+	if len(sp) > 1 {
+		msg := fmt.Sprintf("Element %s in the batch returned an unexpected response code.\n%s", sp[0], errorMessage)
+		return msg
+	}
+
+	// cant parse the message, just return the original message to client
+	return errorMessage
 }
 
 // generateBody generates the complete body for the batch request.
@@ -161,18 +177,16 @@ func (t *TableBatch) generateChangesetBody(changesetBoundary string) (*bytes.Buf
 	writer := multipart.NewWriter(body)
 	writer.SetBoundary(changesetBoundary)
 
-	t.generateEntitySubset(insertOp, changesetBoundary, writer)
-	t.generateEntitySubset(mergeOp, changesetBoundary, writer)
-	t.generateEntitySubset(replaceOp, changesetBoundary, writer)
-	t.generateEntitySubset(deleteOp, changesetBoundary, writer)
-	t.generateEntitySubset(insertOrReplaceOp, changesetBoundary, writer)
-	t.generateEntitySubset(insertOrMergeOp, changesetBoundary, writer)
+	for _, be := range t.BatchEntitySlice {
+		t.generateEntitySubset(&be, writer)
+	}
+
 	writer.Close()
 	return body, nil
 }
 
 // generateVerb generates the HTTP request VERB required for each changeset.
-func generateVerb(op int) (string, error) {
+func generateVerb(op Operation) (string, error) {
 	switch op {
 	case insertOp:
 		return http.MethodPost, nil
@@ -191,7 +205,7 @@ func generateVerb(op int) (string, error) {
 // For inserts it will just be a table query path (table name)
 // but for other operations (modifying an existing entity) then
 // the partition/row keys need to be generated.
-func (t *TableBatch) generateQueryPath(op int, entity Entity) string {
+func (t *TableBatch) generateQueryPath(op Operation, entity *Entity) string {
 	if op == insertOp {
 		return entity.Table.buildPath()
 	}
@@ -199,83 +213,57 @@ func (t *TableBatch) generateQueryPath(op int, entity Entity) string {
 }
 
 // generateGenericOperationHeaders generates common headers for a given operation.
-func generateGenericOperationHeaders(op int, force bool, e *Entity) map[string]string {
+func generateGenericOperationHeaders(be *BatchEntity) map[string]string {
 	retval := map[string]string{}
 
 	for k, v := range defaultChangesetHeaders {
 		retval[k] = v
 	}
 
-	if op == deleteOp || op == replaceOp || op == mergeOp {
-		if force {
+	if be.Op == deleteOp || be.Op == replaceOp || be.Op == mergeOp {
+		if be.Force || be.Entity.OdataEtag == "" {
 			retval["If-Match"] = "*"
 		} else {
-			retval["If-Match"] = e.OdataEtag
+			retval["If-Match"] = be.Entity.OdataEtag
 		}
 	}
 
 	return retval
 }
 
-func (t *TableBatch) getEntitiesForOperation(op int) ([]BatchEntity, error) {
-	switch op {
-	case insertOp:
-		return t.InsertEntitySlice, nil
-	case deleteOp:
-		return t.DeleteEntitySlice, nil
-	case mergeOp:
-		return t.MergeEntitySlice, nil
-	case replaceOp:
-		return t.ReplaceEntitySlice, nil
-	case insertOrReplaceOp:
-		return t.InsertOrReplaceEntitySlice, nil
-	case insertOrMergeOp:
-		return t.InsertOrMergeEntitySlice, nil
-	default:
-		return nil, errors.New("Unable to detect operation")
-	}
-}
-
-// generateEntitySubset generates body payload for particular batch operation.
-func (t *TableBatch) generateEntitySubset(op int, boundary string, writer *multipart.Writer) error {
-
-	entities, err := t.getEntitiesForOperation(op)
-	if err != nil {
-		return err
-	}
+// generateEntitySubset generates body payload for particular batch entity
+func (t *TableBatch) generateEntitySubset(batchEntity *BatchEntity, writer *multipart.Writer) error {
 
 	h := make(textproto.MIMEHeader)
 	h.Set(headerContentType, "application/http")
 	h.Set(headerContentTransferEncoding, "binary")
 
-	verb, err := generateVerb(op)
+	verb, err := generateVerb(batchEntity.Op)
 	if err != nil {
 		return err
 	}
 
-	for _, entity := range entities {
-		genericOpHeadersMap := generateGenericOperationHeaders(op, entity.Force, &entity.Entity)
-		queryPath := t.generateQueryPath(op, entity.Entity)
-		uri := t.Table.tsc.client.getEndpoint(tableServiceName, queryPath, nil)
+	genericOpHeadersMap := generateGenericOperationHeaders(batchEntity)
+	queryPath := t.generateQueryPath(batchEntity.Op, batchEntity.Entity)
+	uri := t.Table.tsc.client.getEndpoint(tableServiceName, queryPath, nil)
 
-		operationWriter, _ := writer.CreatePart(h)
-		writer.SetBoundary(boundary)
+	operationWriter, _ := writer.CreatePart(h)
 
-		urlAndVerb := fmt.Sprintf("%s %s HTTP/1.1\r\n", verb, uri)
-		operationWriter.Write([]byte(urlAndVerb))
-		for k, v := range genericOpHeadersMap {
-			operationWriter.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, v)))
+	urlAndVerb := fmt.Sprintf("%s %s HTTP/1.1\r\n", verb, uri)
+	operationWriter.Write([]byte(urlAndVerb))
+	for k, v := range genericOpHeadersMap {
+		operationWriter.Write([]byte(fmt.Sprintf("%s: %s\r\n", k, v)))
+	}
+	operationWriter.Write([]byte("\r\n")) // additional \r\n is needed per changeset separating the "headers" and the body.
+
+	// delete operation doesn't need a body.
+	if batchEntity.Op != deleteOp {
+		//var e Entity = batchEntity.Entity
+		body, err := json.Marshal(batchEntity.Entity)
+		if err != nil {
+			return err
 		}
-		operationWriter.Write([]byte("\r\n")) // additional \r\n is needed per changeset separating the "headers" and the body.
-
-		// delete operation doesn't need a body.
-		if op != deleteOp {
-			body, err := json.Marshal(entity.Properties)
-			if err != nil {
-				return err
-			}
-			operationWriter.Write(body)
-		}
+		operationWriter.Write(body)
 	}
 
 	return nil
