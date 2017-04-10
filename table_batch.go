@@ -18,12 +18,12 @@ type Operation int
 
 // consts for batch operations.
 const (
-	insertOp          = Operation(1)
-	deleteOp          = Operation(2)
-	replaceOp         = Operation(3)
-	mergeOp           = Operation(4)
-	insertOrReplaceOp = Operation(5)
-	insertOrMergeOp   = Operation(6)
+	InsertOp          = Operation(1)
+	DeleteOp          = Operation(2)
+	ReplaceOp         = Operation(3)
+	MergeOp           = Operation(4)
+	InsertOrReplaceOp = Operation(5)
+	InsertOrMergeOp   = Operation(6)
 )
 
 // BatchEntity used for tracking Entities to operate on and
@@ -60,37 +60,52 @@ func (t *Table) NewBatch() TableBatch {
 
 // InsertEntity adds an entity in preparation for a batch insert.
 func (t *TableBatch) InsertEntity(entity *Entity) {
-	be := BatchEntity{Entity: entity, Force: false, Op: insertOp}
+	be := BatchEntity{Entity: entity, Force: false, Op: InsertOp}
 	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
 // InsertOrReplaceEntity adds an entity in preparation for a batch insert or replace.
 func (t *TableBatch) InsertOrReplaceEntity(entity *Entity, force bool) {
-	be := BatchEntity{Entity: entity, Force: false, Op: insertOrReplaceOp}
+	be := BatchEntity{Entity: entity, Force: false, Op: InsertOrReplaceOp}
 	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
+}
+
+// InsertOrReplaceEntityByForce adds an entity in preparation for a batch insert or replace. Forces regardless of ETag
+func (t *TableBatch) InsertOrReplaceEntityByForce(entity *Entity) {
+	t.InsertOrReplaceEntity(entity, true)
 }
 
 // InsertOrMergeEntity adds an entity in preparation for a batch insert or merge.
 func (t *TableBatch) InsertOrMergeEntity(entity *Entity, force bool) {
-	be := BatchEntity{Entity: entity, Force: false, Op: insertOrMergeOp}
+	be := BatchEntity{Entity: entity, Force: false, Op: InsertOrMergeOp}
 	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
+}
+
+// InsertOrMergeEntityByForce adds an entity in preparation for a batch insert or merge. Forces regardless of ETag
+func (t *TableBatch) InsertOrMergeEntityByForce(entity *Entity) {
+	t.InsertOrMergeEntity(entity, true)
 }
 
 // ReplaceEntity adds an entity in preparation for a batch replace.
 func (t *TableBatch) ReplaceEntity(entity *Entity) {
-	be := BatchEntity{Entity: entity, Force: false, Op: replaceOp}
+	be := BatchEntity{Entity: entity, Force: false, Op: ReplaceOp}
 	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
 // DeleteEntity adds an entity in preparation for a batch delete
 func (t *TableBatch) DeleteEntity(entity *Entity, force bool) {
-	be := BatchEntity{Entity: entity, Force: false, Op: deleteOp}
+	be := BatchEntity{Entity: entity, Force: false, Op: DeleteOp}
 	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
+}
+
+// DeleteEntityByForce adds an entity in preparation for a batch delete. Forces regardless of ETag
+func (t *TableBatch) DeleteEntityByForce(entity *Entity, force bool) {
+	t.DeleteEntity(entity, true)
 }
 
 // MergeEntity adds an entity in preparation for a batch merge
 func (t *TableBatch) MergeEntity(entity *Entity) {
-	be := BatchEntity{Entity: entity, Force: false, Op: mergeOp}
+	be := BatchEntity{Entity: entity, Force: false, Op: MergeOp}
 	t.BatchEntitySlice = append(t.BatchEntitySlice, be)
 }
 
@@ -188,13 +203,13 @@ func (t *TableBatch) generateChangesetBody(changesetBoundary string) (*bytes.Buf
 // generateVerb generates the HTTP request VERB required for each changeset.
 func generateVerb(op Operation) (string, error) {
 	switch op {
-	case insertOp:
+	case InsertOp:
 		return http.MethodPost, nil
-	case deleteOp:
+	case DeleteOp:
 		return http.MethodDelete, nil
-	case replaceOp, insertOrReplaceOp:
+	case ReplaceOp, InsertOrReplaceOp:
 		return http.MethodPut, nil
-	case mergeOp, insertOrMergeOp:
+	case MergeOp, InsertOrMergeOp:
 		return "MERGE", nil
 	default:
 		return "", errors.New("Unable to detect operation")
@@ -206,7 +221,7 @@ func generateVerb(op Operation) (string, error) {
 // but for other operations (modifying an existing entity) then
 // the partition/row keys need to be generated.
 func (t *TableBatch) generateQueryPath(op Operation, entity *Entity) string {
-	if op == insertOp {
+	if op == InsertOp {
 		return entity.Table.buildPath()
 	}
 	return entity.buildPath()
@@ -220,7 +235,7 @@ func generateGenericOperationHeaders(be *BatchEntity) map[string]string {
 		retval[k] = v
 	}
 
-	if be.Op == deleteOp || be.Op == replaceOp || be.Op == mergeOp {
+	if be.Op == DeleteOp || be.Op == ReplaceOp || be.Op == MergeOp {
 		if be.Force || be.Entity.OdataEtag == "" {
 			retval["If-Match"] = "*"
 		} else {
@@ -257,7 +272,7 @@ func (t *TableBatch) generateEntitySubset(batchEntity *BatchEntity, writer *mult
 	operationWriter.Write([]byte("\r\n")) // additional \r\n is needed per changeset separating the "headers" and the body.
 
 	// delete operation doesn't need a body.
-	if batchEntity.Op != deleteOp {
+	if batchEntity.Op != DeleteOp {
 		//var e Entity = batchEntity.Entity
 		body, err := json.Marshal(batchEntity.Entity)
 		if err != nil {
