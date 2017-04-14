@@ -330,7 +330,7 @@ func (q *Queue) SetPermissions(permissions QueuePermissions, options *SetQueuePe
 	}
 	defer readAndCloseBody(resp.body)
 
-	if err := checkRespCode(resp.statusCode, []int{http.StatusOK}); err != nil {
+	if err := checkRespCode(resp.statusCode, []int{http.StatusNoContent}); err != nil {
 		return errors.New("Unable to set permissions")
 	}
 
