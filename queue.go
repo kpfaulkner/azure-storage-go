@@ -391,7 +391,6 @@ func (q *Queue) GetPermissions(options *GetQueuePermissionOptions) (*QueuePermis
 		headers = mergeHeaders(headers, headersFromStruct(*options))
 	}
 	uri := q.qsc.client.getEndpoint(queueServiceName, q.buildPath(), params)
-
 	resp, err := q.qsc.client.exec(http.MethodGet, uri, headers, nil, q.qsc.auth)
 	if err != nil {
 		return nil, err
