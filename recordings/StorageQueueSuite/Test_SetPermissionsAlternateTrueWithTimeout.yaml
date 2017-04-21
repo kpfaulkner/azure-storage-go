@@ -7,11 +7,11 @@ interactions:
     form: {}
     headers:
       Authorization:
-      - SharedKey golangrocksonazure:A0x0iaGj234itf8xTEYI5oyr/s1nF7uMHONQQtPvTPU=
+      - SharedKey golangrocksonazure:hTuKOnJQh9NYSgAYykPG7hq7p/kXToTWdv+9CLeluOk=
       User-Agent:
       - Go/go1.8 (amd64-windows) azure-storage-go/0.1.0 api-version/2016-05-31 queue
       X-Ms-Date:
-      - Mon, 17 Apr 2017 22:53:41 GMT
+      - Fri, 21 Apr 2017 06:52:26 GMT
       X-Ms-Version:
       - 2016-05-31
     url: https://golangrocksonazure.queue.core.windows.net/queue-161storagequeuesuitetestsetpermissionsalternatetruewithti
@@ -20,11 +20,11 @@ interactions:
     body: ""
     headers:
       Date:
-      - Mon, 17 Apr 2017 22:53:41 GMT
+      - Fri, 21 Apr 2017 06:52:27 GMT
       Server:
       - Windows-Azure-Queue/1.0 Microsoft-HTTPAPI/2.0
       X-Ms-Request-Id:
-      - 333db0c1-0003-0043-17cd-b79a27000000
+      - f8cf355e-0003-0021-036b-baddff000000
       X-Ms-Version:
       - 2016-05-31
     status: 201 Created
@@ -34,13 +34,13 @@ interactions:
     form: {}
     headers:
       Authorization:
-      - SharedKey golangrocksonazure:NZ9XfkJ1afTOqFqfu1EUmImVX3ZB/YdjlP/AL8z9uXU=
+      - SharedKey golangrocksonazure:j7UAa/yTLHn5lrdbVRkSO/0a4oCa+JS/iHwHNpyofGk=
       Content-Length:
       - "231"
       User-Agent:
       - Go/go1.8 (amd64-windows) azure-storage-go/0.1.0 api-version/2016-05-31 queue
       X-Ms-Date:
-      - Mon, 17 Apr 2017 22:53:41 GMT
+      - Fri, 21 Apr 2017 06:52:27 GMT
       X-Ms-Version:
       - 2016-05-31
     url: https://golangrocksonazure.queue.core.windows.net/queue-161storagequeuesuitetestsetpermissionsalternatetruewithti?comp=acl&timeout=30
@@ -51,11 +51,11 @@ interactions:
       Content-Length:
       - "0"
       Date:
-      - Mon, 17 Apr 2017 22:53:41 GMT
+      - Fri, 21 Apr 2017 06:52:27 GMT
       Server:
       - Windows-Azure-Queue/1.0 Microsoft-HTTPAPI/2.0
       X-Ms-Request-Id:
-      - 333db0c6-0003-0043-1acd-b79a27000000
+      - f8cf3569-0003-0021-096b-baddff000000
       X-Ms-Version:
       - 2016-05-31
     status: 204 No Content
@@ -65,11 +65,11 @@ interactions:
     form: {}
     headers:
       Authorization:
-      - SharedKey golangrocksonazure:RnBIxqTmnPjJMUyI88KIFsoMLY1yhEWrtFr3TD2Pb2c=
+      - SharedKey golangrocksonazure:rzbqZS0+hXXUHDWUFdC7pMDI66HwT33qzUq20gv+J6k=
       User-Agent:
       - Go/go1.8 (amd64-windows) azure-storage-go/0.1.0 api-version/2016-05-31 queue
       X-Ms-Date:
-      - Mon, 17 Apr 2017 22:53:41 GMT
+      - Fri, 21 Apr 2017 06:52:27 GMT
       X-Ms-Version:
       - 2016-05-31
     url: https://golangrocksonazure.queue.core.windows.net/queue-161storagequeuesuitetestsetpermissionsalternatetruewithti
@@ -80,11 +80,11 @@ interactions:
       Content-Length:
       - "0"
       Date:
-      - Mon, 17 Apr 2017 22:53:41 GMT
+      - Fri, 21 Apr 2017 06:52:27 GMT
       Server:
       - Windows-Azure-Queue/1.0 Microsoft-HTTPAPI/2.0
       X-Ms-Request-Id:
-      - 333db0c7-0003-0043-1bcd-b79a27000000
+      - f8cf3572-0003-0021-0e6b-baddff000000
       X-Ms-Version:
       - 2016-05-31
     status: 204 No Content

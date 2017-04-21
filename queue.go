@@ -349,7 +349,7 @@ func generateQueueACLpayload(policies []QueueAccessPolicy) (io.Reader, int, erro
 }
 
 func (qapd *QueueAccessPolicy) generateQueuePermissions() (permissions string) {
-	// generate the permissions string (rwd).
+	// generate the permissions string (raup).
 	// still want the end user API to have bool flags.
 	permissions = ""
 

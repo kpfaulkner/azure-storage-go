@@ -262,8 +262,8 @@ func (s *StorageQueueSuite) Test_GetPermissionsAllTrueNoTimeout(c *chk.C) {
 	perms := QueuePermissions{}
 	qapd := QueueAccessPolicy{
 		ID:         "GolangRocksOnAzure",
-		StartTime:  time.Date(2050, time.December, 20, 21, 55, 0, 0, time.FixedZone("GMT", -6)),
-		ExpiryTime: time.Date(2051, time.December, 20, 21, 55, 0, 0, time.FixedZone("GMT", -6)),
+		StartTime:  time.Date(2050, time.December, 20, 21, 55, 0, 0, time.UTC),
+		ExpiryTime: time.Date(2051, time.December, 20, 21, 55, 0, 0, time.UTC),
 		CanRead:    true,
 		CanAdd:     true,
 		CanUpdate:  true,
@@ -281,7 +281,9 @@ func (s *StorageQueueSuite) Test_GetPermissionsAllTrueNoTimeout(c *chk.C) {
 	c.Assert(returnedPerms.AccessPolicies[0].CanAdd, chk.Equals, true)
 	c.Assert(returnedPerms.AccessPolicies[0].CanUpdate, chk.Equals, true)
 	c.Assert(returnedPerms.AccessPolicies[0].CanProcess, chk.Equals, true)
-
+	c.Assert(returnedPerms.AccessPolicies[0].ID, chk.Equals, "GolangRocksOnAzure")
+	c.Assert(returnedPerms.AccessPolicies[0].StartTime, chk.Equals, qapd.StartTime)
+	c.Assert(returnedPerms.AccessPolicies[0].ExpiryTime, chk.Equals, qapd.ExpiryTime)
 }
 
 func (s *StorageQueueSuite) Test_GetPermissionsAllTrueWithTimeout(c *chk.C) {
@@ -296,8 +298,8 @@ func (s *StorageQueueSuite) Test_GetPermissionsAllTrueWithTimeout(c *chk.C) {
 	perms := QueuePermissions{}
 	qapd := QueueAccessPolicy{
 		ID:         "GolangRocksOnAzure",
-		StartTime:  time.Date(2050, time.December, 20, 21, 55, 0, 0, time.FixedZone("GMT", -6)),
-		ExpiryTime: time.Date(2051, time.December, 20, 21, 55, 0, 0, time.FixedZone("GMT", -6)),
+		StartTime:  time.Date(2050, time.December, 20, 21, 55, 0, 0, time.UTC),
+		ExpiryTime: time.Date(2051, time.December, 20, 21, 55, 0, 0, time.UTC),
 		CanRead:    true,
 		CanAdd:     true,
 		CanUpdate:  true,
@@ -316,10 +318,13 @@ func (s *StorageQueueSuite) Test_GetPermissionsAllTrueWithTimeout(c *chk.C) {
 	c.Assert(returnedPerms.AccessPolicies[0].CanAdd, chk.Equals, true)
 	c.Assert(returnedPerms.AccessPolicies[0].CanUpdate, chk.Equals, true)
 	c.Assert(returnedPerms.AccessPolicies[0].CanProcess, chk.Equals, true)
+	c.Assert(returnedPerms.AccessPolicies[0].ID, chk.Equals, "GolangRocksOnAzure")
+	c.Assert(returnedPerms.AccessPolicies[0].StartTime, chk.Equals, qapd.StartTime)
+	c.Assert(returnedPerms.AccessPolicies[0].ExpiryTime, chk.Equals, qapd.ExpiryTime)
 
 }
 
-func (s *StorageQueueSuite) Test_GetPermissionsAlterateTrueNoTimeout(c *chk.C) {
+func (s *StorageQueueSuite) Test_GetPermissionsAlternateTrueNoTimeout(c *chk.C) {
 	cli := getQueueClient(c)
 	rec := cli.client.appendRecorder(c)
 	defer rec.Stop()
@@ -331,8 +336,8 @@ func (s *StorageQueueSuite) Test_GetPermissionsAlterateTrueNoTimeout(c *chk.C) {
 	perms := QueuePermissions{}
 	qapd := QueueAccessPolicy{
 		ID:         "GolangRocksOnAzure",
-		StartTime:  time.Date(2050, time.December, 20, 21, 55, 0, 0, time.FixedZone("GMT", -6)),
-		ExpiryTime: time.Date(2051, time.December, 20, 21, 55, 0, 0, time.FixedZone("GMT", -6)),
+		StartTime:  time.Date(2050, time.December, 20, 21, 55, 0, 0, time.UTC),
+		ExpiryTime: time.Date(2051, time.December, 20, 21, 55, 0, 0, time.UTC),
 		CanRead:    true,
 		CanAdd:     false,
 		CanUpdate:  true,
@@ -350,5 +355,7 @@ func (s *StorageQueueSuite) Test_GetPermissionsAlterateTrueNoTimeout(c *chk.C) {
 	c.Assert(returnedPerms.AccessPolicies[0].CanAdd, chk.Equals, false)
 	c.Assert(returnedPerms.AccessPolicies[0].CanUpdate, chk.Equals, true)
 	c.Assert(returnedPerms.AccessPolicies[0].CanProcess, chk.Equals, false)
-
+	c.Assert(returnedPerms.AccessPolicies[0].ID, chk.Equals, "GolangRocksOnAzure")
+	c.Assert(returnedPerms.AccessPolicies[0].StartTime, chk.Equals, qapd.StartTime)
+	c.Assert(returnedPerms.AccessPolicies[0].ExpiryTime, chk.Equals, qapd.ExpiryTime)
 }
