@@ -7,11 +7,11 @@ interactions:
     form: {}
     headers:
       Authorization:
-      - SharedKey golangrocksonazure:IOrQOALo7e0Ph2RHABe+UNv09zPjqTbyZzHbVF4nHW4=
+      - SharedKey golangrocksonazure:zo8JEyh9EENVBRdXExInSvutVAgraQ6OwMIGqlVvEsQ=
       User-Agent:
       - Go/go1.8 (amd64-windows) azure-storage-go/0.1.0 api-version/2016-05-31 queue
       X-Ms-Date:
-      - Fri, 21 Apr 2017 06:52:22 GMT
+      - Fri, 21 Apr 2017 07:03:27 GMT
       X-Ms-Version:
       - 2016-05-31
     url: https://golangrocksonazure.queue.core.windows.net/queue-153storagequeuesuitetestgetpermissionsalltruenotimeout
@@ -20,11 +20,11 @@ interactions:
     body: ""
     headers:
       Date:
-      - Fri, 21 Apr 2017 06:52:23 GMT
+      - Fri, 21 Apr 2017 07:03:27 GMT
       Server:
       - Windows-Azure-Queue/1.0 Microsoft-HTTPAPI/2.0
       X-Ms-Request-Id:
-      - f8cf34a8-0003-0021-7e6b-baddff000000
+      - 8108ec6d-0003-0000-156d-bab0ce000000
       X-Ms-Version:
       - 2016-05-31
     status: 201 Created
@@ -34,13 +34,13 @@ interactions:
     form: {}
     headers:
       Authorization:
-      - SharedKey golangrocksonazure:1twpzgVQMKNgua4HDzlNZCuHdjPsJybpGE7WP/1pYEk=
+      - SharedKey golangrocksonazure:W4khUmbLXWT3SFalpmqXlLsy05fZ88kVxcAIBcOKj54=
       Content-Length:
       - "233"
       User-Agent:
       - Go/go1.8 (amd64-windows) azure-storage-go/0.1.0 api-version/2016-05-31 queue
       X-Ms-Date:
-      - Fri, 21 Apr 2017 06:52:23 GMT
+      - Fri, 21 Apr 2017 07:03:28 GMT
       X-Ms-Version:
       - 2016-05-31
     url: https://golangrocksonazure.queue.core.windows.net/queue-153storagequeuesuitetestgetpermissionsalltruenotimeout?comp=acl
@@ -51,11 +51,11 @@ interactions:
       Content-Length:
       - "0"
       Date:
-      - Fri, 21 Apr 2017 06:52:23 GMT
+      - Fri, 21 Apr 2017 07:03:28 GMT
       Server:
       - Windows-Azure-Queue/1.0 Microsoft-HTTPAPI/2.0
       X-Ms-Request-Id:
-      - f8cf34b7-0003-0021-066b-baddff000000
+      - 8108ec7b-0003-0000-176d-bab0ce000000
       X-Ms-Version:
       - 2016-05-31
     status: 204 No Content
@@ -65,11 +65,11 @@ interactions:
     form: {}
     headers:
       Authorization:
-      - SharedKey golangrocksonazure:X/s1i6bH+b09dbfoLNv6tjqV5nmJyWBSYVUyDkbYfXM=
+      - SharedKey golangrocksonazure:Uoena/8a370/fP/wAcFFi3vRj1P0l5S8pORPgxAB6Yo=
       User-Agent:
       - Go/go1.8 (amd64-windows) azure-storage-go/0.1.0 api-version/2016-05-31 queue
       X-Ms-Date:
-      - Fri, 21 Apr 2017 06:52:23 GMT
+      - Fri, 21 Apr 2017 07:03:28 GMT
       X-Ms-Version:
       - 2016-05-31
     url: https://golangrocksonazure.queue.core.windows.net/queue-153storagequeuesuitetestgetpermissionsalltruenotimeout?comp=acl
@@ -82,11 +82,11 @@ interactions:
       Content-Type:
       - application/xml
       Date:
-      - Fri, 21 Apr 2017 06:52:24 GMT
+      - Fri, 21 Apr 2017 07:03:28 GMT
       Server:
       - Windows-Azure-Queue/1.0 Microsoft-HTTPAPI/2.0
       X-Ms-Request-Id:
-      - f8cf34be-0003-0021-0d6b-baddff000000
+      - 8108ec80-0003-0000-1a6d-bab0ce000000
       X-Ms-Version:
       - 2016-05-31
     status: 200 OK
@@ -96,11 +96,11 @@ interactions:
     form: {}
     headers:
       Authorization:
-      - SharedKey golangrocksonazure:3kchJKiV3vim9aE0x3u+SL1BnxdgmfVTBJmojA9yLDU=
+      - SharedKey golangrocksonazure:gn0ySQpnA/3nw6fVQ8Gcqa8HM70GY+veTfaKLT0hr6I=
       User-Agent:
       - Go/go1.8 (amd64-windows) azure-storage-go/0.1.0 api-version/2016-05-31 queue
       X-Ms-Date:
-      - Fri, 21 Apr 2017 06:52:23 GMT
+      - Fri, 21 Apr 2017 07:03:28 GMT
       X-Ms-Version:
       - 2016-05-31
     url: https://golangrocksonazure.queue.core.windows.net/queue-153storagequeuesuitetestgetpermissionsalltruenotimeout
@@ -111,11 +111,11 @@ interactions:
       Content-Length:
       - "0"
       Date:
-      - Fri, 21 Apr 2017 06:52:24 GMT
+      - Fri, 21 Apr 2017 07:03:28 GMT
       Server:
       - Windows-Azure-Queue/1.0 Microsoft-HTTPAPI/2.0
       X-Ms-Request-Id:
-      - f8cf34c7-0003-0021-136b-baddff000000
+      - 8108ec86-0003-0000-1e6d-bab0ce000000
       X-Ms-Version:
       - 2016-05-31
     status: 204 No Content
